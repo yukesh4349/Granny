@@ -1,0 +1,97 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ELDERLY
+  CAREGIVER
+  FAMILY
+}
+
+enum PreferredLanguage {
+  EN
+  TA
+}
+
+model User {
+  id                String             @id @default(uuid())
+  email             String?            @unique
+  phoneNumber       String?            @unique
+  name              String
+  role              Role               @default(ELDERLY)
+  language          PreferredLanguage  @default(TA)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  profile           Profile?
+  memories          Memory[]
+  conversations     Conversation[]
+  medications       Medication[]
+  gameSessions      GameSession[]
+}
+
+model Profile {
+  id                String             @id @default(uuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth       DateTime?
+  emergencyContact  String?
+  medicalNotes      String?
+  voiceTone         String?            @default("warm_compassionate")
+}
+
+model Memory {
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  content           String
+  tags              String[]
+  createdAt         DateTime           @default(now())
+}
+
+model Conversation {
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary           String?
+  createdAt         DateTime           @default(now())
+  messages          Message[]
+}
+
+model Message {
+  id                String             @id @default(uuid())
+  conversationId    String
+  conversation      Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender            String             // "user" or "assistant"
+  text              String
+  audioUrl          String?
+  emotion           String?
+  createdAt         DateTime           @default(now())
+}
+
+model Medication {
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  dosage            String
+  timeOfDay         String[]           // e.g. ["08:00", "20:00"]
+  instructions      String?
+  isActive          Boolean            @default(true)
+}
+
+model GameSession {
+  id                String             @id @default(uuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameType          String             // e.g. "memory_recall", "word_association", "trivia"
+  score             Int                @default(0)
+  durationSeconds   Int                @default(0)
+  playedAt          DateTime           @default(now())
+}
