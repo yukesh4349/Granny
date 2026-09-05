@@ -1,6 +1,6 @@
 <div align="center">
 
-# 👵 Granny (கிரானி)
+# 👵 Granny
 ### AI-Based Cognitive Gaming & Memory Assistance for the Elderly
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -13,7 +13,7 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
 <p align="center">
-  <b>A compassionate, voice-first digital companion designed to empower, entertain, and protect elderly individuals through personalized memory assistance, nostalgic cognitive games, daily routine support, family connections, and empathetic regional voice interaction.</b>
+  <b>A compassionate, voice-first digital companion designed to empower, entertain, and protect elderly individuals through personalized memory assistance, nostalgic cognitive games, daily routine support, family connections, and comforting voice interactions.</b>
 </p>
 
 [Key Features](#-key-features) •
@@ -30,7 +30,7 @@
 
 ## 📖 Overview
 
-**Granny** bridges the digital divide for seniors. Rather than forcing elderly individuals to navigate complex, overwhelming modern interfaces, Granny offers an empathetic, voice-first environment inspired by familiar memories, nostalgic 80s/90s cognitive games, and natural conversation in regional languages—with dedicated optimization for **Tamil (தமிழ்)** and **English**.
+**Granny** bridges the digital divide for seniors. Rather than forcing elderly individuals to navigate complex, overwhelming modern interfaces, Granny offers an empathetic, voice-first environment inspired by familiar memories, nostalgic 80s/90s cognitive games, and natural conversation in plain language—with dedicated support for **English** and multilingual speech capabilities.
 
 ### 🎯 Mission & Vision
 * **Dignity & Independence**: Provide proactive daily routine and medication reminders without feeling clinical.
@@ -46,7 +46,7 @@
 | :--- | :--- | :--- |
 | 🧠 **Cognitive & Nostalgic Games** | Classic games inspired by the 80s & 90s to stimulate memory, attention, recognition, and logic. | • Adaptive difficulty based on performance<br>• Nostalgic themes recalling youth memories<br>• Persistent score & recall tracking |
 | 💭 **Personal Memory Assistant** | Semantic long-term memory that preserves life stories, preferences, and personal milestones. | • Contextual conversational recall<br>• Recalls people, routines, and events<br>• Caregiver-managed memory controls |
-| 🎙️ **Multilingual Voice Interaction** | Voice-first natural interaction powered by speech-to-text and low-latency speech synthesis. | • Deep regional optimization for **Tamil** & English<br>• Conversational history retention<br>• Natural conversational cadence |
+| 🎙️ **Voice Interaction** | Voice-first natural interaction powered by speech-to-text and low-latency speech synthesis. | • Conversational history retention<br>• Natural speech cadence and pauses<br>• Simple, hands-free interaction |
 | 👨‍👩‍👧 **Family & Familiar Voice** | Recognition of enrolled family members' voices and relationships. | • Personalized responses per recognized caller<br>• Connected family circle dashboard<br>• Shared memory & voice journals |
 | 💬 **Friendly Companion** | Empathetic conversational partner that listens patiently and converses like a close friend. | • Warm, gentle, non-technical personality<br>• Contextual continuity across sessions<br>• Adaptive speech tone |
 | ❤️ **Emotion & Tone Awareness** | Analyzes acoustic and linguistic sentiment (happy, sad, confused, distressed, calm). | • Adjusts tone to comfort or calm the user<br>• Flags confusion or distress patterns<br>• Empathetic response generation |
@@ -79,8 +79,8 @@ graph TD
 
     subgraph AI["AI Microservices (FastAPI)"]
         FastAPI["🐍 AI Service Gateway"]
-        STT["🎙️ Speech-to-Text<br/>(Whisper / Regional)"]
-        TTS["🔊 Text-to-Speech<br/>(Regional Synthesizer)"]
+        STT["🎙️ Speech-to-Text<br/>(Whisper Engine)"]
+        TTS["🔊 Text-to-Speech<br/>(Voice Synthesizer)"]
         LLM["🤖 Empathetic LLM<br/>(Persona & Safety Guardrails)"]
         VectorDB["🧠 Semantic Memory & Embeddings"]
         Emotion["❤️ Tone & Emotion Analyzer"]
@@ -115,7 +115,7 @@ graph TD
 │ Database & ORM  │ PostgreSQL, Prisma ORM                       │ Relational data, schemas, migrations      │
 │ In-Memory Store │ Redis                                        │ Caching, session states, pub/sub queues   │
 │ AI Microservice │ Python 3.10+, FastAPI, Pydantic              │ Real-time voice, emotion, & memory system │
-│ Machine Learning│ Whisper STT, TTS Engines, Regional LLMs      │ Tamil/English audio processing & empathy  │
+│ Machine Learning│ Whisper STT, TTS Engines, Empathetic LLMs    │ Natural speech processing & conversation │
 │ Push Alerts     │ Firebase Cloud Messaging (FCM)               │ Urgent medication alarms & family alerts │
 │ DevOps          │ Docker, Docker Compose, GitHub Actions       │ Containerized services & CI/CD automation │
 └─────────────────┴──────────────────────────────────────────────┴───────────────────────────────────────────┘
@@ -138,7 +138,7 @@ granny/
 │   │   │   ├── hooks/           # Custom React hooks
 │   │   │   ├── services/        # API, Auth, Voice, and Storage service clients
 │   │   │   ├── store/           # Global state management (Zustand)
-│   │   │   ├── i18n/            # Localization catalogs (en, ta)
+│   │   │   ├── i18n/            # Localization catalogs
 │   │   │   ├── App.tsx          # App root component
 │   │   │   └── main.tsx         # Entry point
 │   │   ├── package.json
@@ -153,7 +153,7 @@ granny/
 │       │   ├── navigation/      # Stack & Tab navigators
 │       │   ├── features/        # Voice, memory, companion, reminders
 │       │   ├── services/        # Audio streaming, notifications, local storage
-│       │   ├── i18n/            # Bilingual dictionaries (en, ta)
+│       │   ├── i18n/            # Language dictionaries
 │       │   └── store/           # Mobile client state
 │       ├── app.json
 │       ├── package.json
@@ -228,10 +228,10 @@ flowchart TD
 
     Context --> Memory[(🧠 Personal Memory Store)]
     Context --> Emotion[❤️ Tone & Sentiment Analyzer]
-    Context --> Profile[👤 User Language & Preference]
+    Context --> Profile[👤 User Preferences & History]
 
     Memory & Emotion & Profile --> Synthesis[🤖 Empathetic Response Generation]
-    Synthesis --> TTS[🔊 Regional Voice Synthesis - Tamil / English]
+    Synthesis --> TTS[🔊 Natural Voice Synthesis]
     TTS --> Output([👵 Gentle Audio Playback + Large Text Display])
 
     subgraph RoutineCheck["Background Daemon"]
@@ -243,23 +243,24 @@ flowchart TD
 
 ---
 
-## 🌐 Multilingual & Regional Voice (Tamil & English)
+## 🎙️ Natural Voice Interaction & Senior Accessibility
 
-Granny prioritizes seamless regional voice interaction:
+Granny prioritizes seamless, comforting voice interaction tailored specifically for older adults:
 
 ```
 ┌───────────────────────────────────────┬───────────────────────────────────────┐
-│ 🇬🇧 English Voice Assistant             │ 🇮🇳 Tamil Voice Assistant (தமிழ் குரல்)│
+│ ☀️ Morning Check-In Dialogue          │ 💊 Medication & Care Reminder         │
 ├───────────────────────────────────────┼───────────────────────────────────────┤
-│ "Good morning, Kamakshi! It's 8:00 AM.│ "காலை வணக்கம் காமாட்சி அம்மா!        │
-│ Did you take your blood pressure pill? │ மணி காலை 8:00. உங்கள் மாத்திரையை     │
-│ How are you feeling today?"           │ சாப்பிட்டீர்களா? இன்று உடல் நலம்       │
-│                                       │ எப்படி இருக்கிறது?"                   │
+│ "Good morning, Margaret! It is 8:00   │ "Just a gentle reminder, Margaret:    │
+│ AM. Did you rest well last night?     │ It is time for your morning pill.     │
+│ How are you feeling today?"           │ Shall I let your family know you have │
+│                                       │ taken it?"                            │
 └───────────────────────────────────────┴───────────────────────────────────────┘
 ```
 
-* **Dialect Awareness**: Optimized for natural elderly speech cadence, pauses, and repetition.
-* **Cultural Context**: Conversations incorporate familiar idioms, proverbs, and gentle conversational respect (*அம்மா / Amma*).
+* **Speech Cadence Awareness**: Specially calibrated for elderly conversational speed, natural pauses, and patient listening.
+* **Warm & Respectful Demeanor**: Employs comforting, polite, and encouraging tone across all interactions.
+* **No Complex Commands**: Users can speak naturally in complete sentences, brief words, or questions without memorizing keywords.
 
 ---
 
@@ -274,8 +275,8 @@ Granny prioritizes seamless regional voice interaction:
 ### 1. Clone & Configure Environment
 
 ```bash
-git clone https://github.com/your-org/granny.git
-cd granny
+git clone https://github.com/yukesh4349/Granny.git
+cd Granny
 
 # Copy environment variables
 cp .env.example .env
@@ -336,8 +337,8 @@ npm run dev:mobile
 
 ## 🔮 Future Scope & Roadmap
 
-- [ ] **Expanded Regional Languages**: Hindi, Telugu, Malayalam, Kannada, Bengali.
-- [ ] **Advanced Nostalgic Mini-Games**: Regional folk riddles (*விடுகதைகள்*), vintage radio quizzes, family photo jigsaw puzzles.
+- [ ] **Expanded Regional Languages**: Extended multilingual support across regional dialects.
+- [ ] **Advanced Nostalgic Mini-Games**: Traditional folk riddles, vintage radio quizzes, family photo jigsaw puzzles.
 - [ ] **Speaker Identification**: Biometric voiceprint recognition to greet grandchildren vs. caregivers.
 - [ ] **Smart Home & Wearable Sync**: Integration with pulse oximeters, smart pill boxes, and emergency fall detection bands.
 - [ ] **Offline Edge Mode**: On-device lightweight voice model for essential reminders without internet connectivity.
@@ -349,7 +350,7 @@ npm run dev:mobile
 
 * **Health Disclaimer**: Granny provides cognitive engagement and schedule reminders. It **never** provides autonomous medical diagnoses, alters prescription dosages, or replaces qualified clinical professionals.
 * **Data Privacy**: Senior memories, voice recordings, and health records are encrypted at rest and in transit. Family access requires explicit elderly or guardian consent.
-* **Gentle Boundary Enforcement**: If distress or confusion is detected, Granny gently directs the conversation toward calling trusted family members or medical helplines.
+* **Gentle Boundary Enforcement**: If distress or confusion is detected, Granny gently directs the conversation toward calling trusted family members or emergency helplines.
 
 ---
 
