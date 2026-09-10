@@ -25,10 +25,13 @@ export default function CompanionScreen({ highContrast }: Props) {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [distressAlert, setDistressAlert] = useState<string | null>(null);
+  const [deliveryMode, setDeliveryMode] = useState<'normal' | 'song' | 'poem' | 'word'>('normal');
 
-  const handleSendMessage = async (textToSend?: string) => {
-    const text = textToSend || inputText;
-    if (!text.trim()) return;
+  const handleSendMessage = async (textToSend?: string, modeOverride?: 'normal' | 'song' | 'poem' | 'word') => {
+    const text = (textToSend || inputText).trim();
+    if (!text) return;
+
+    const currentMode = modeOverride || deliveryMode;
 
     const userMsg: MobileChatMessage = {
       id: Date.now().toString(),
@@ -46,10 +49,19 @@ export default function CompanionScreen({ highContrast }: Props) {
       setDistressAlert('Caregiver notified of distress indicator.');
     }
 
+    let formattedReply = res.reply;
+    if (currentMode === 'song') {
+      formattedReply = `🎵 [Singing Melody] ${res.reply} 🎶`;
+    } else if (currentMode === 'poem') {
+      formattedReply = `🎶 [Poetic Rhyme]\n${res.reply}`;
+    } else if (currentMode === 'word') {
+      formattedReply = `🗣️ [Word-by-Word] ${res.reply.split(' ').join(' • ')}`;
+    }
+
     const aiMsg: MobileChatMessage = {
       id: (Date.now() + 1).toString(),
       sender: 'assistant',
-      text: res.reply,
+      text: formattedReply,
       emotion: res.emotion,
       distress: res.distressFlag,
       timestamp: 'Just now',
@@ -64,8 +76,8 @@ export default function CompanionScreen({ highContrast }: Props) {
       // Simulate speech-to-text voice input after 2 seconds
       setTimeout(() => {
         setIsListening(false);
-        handleSendMessage("I am having some tea and looking at our family photos.");
-      }, 2500);
+        handleSendMessage("Good morning Granny, can you sing a sweet melody for me?", 'song');
+      }, 2000);
     } else {
       setIsListening(false);
     }
@@ -81,6 +93,33 @@ export default function CompanionScreen({ highContrast }: Props) {
           </Text>
         </View>
       )}
+
+      {/* Voice Mode Selector Banner */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: 8, backgroundColor: colors.cardBg }}>
+        {[
+          { mode: 'normal', label: '💬 Normal' },
+          { mode: 'song', label: '🎵 Sing Song' },
+          { mode: 'poem', label: '🎶 Poem' },
+          { mode: 'word', label: '🗣️ Word' },
+        ].map(m => (
+          <TouchableOpacity
+            key={m.mode}
+            onPress={() => setDeliveryMode(m.mode as any)}
+            style={{
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              borderRadius: 12,
+              backgroundColor: deliveryMode === m.mode ? colors.primaryLight : colors.bg,
+              borderWidth: 1,
+              borderColor: deliveryMode === m.mode ? colors.primary : colors.border,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '700', color: deliveryMode === m.mode ? colors.primary : colors.textSecondary }}>
+              {m.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Chat Messages */}
       <ScrollView style={styles.chatArea} contentContainerStyle={styles.chatContent}>
@@ -106,11 +145,33 @@ export default function CompanionScreen({ highContrast }: Props) {
         ))}
       </ScrollView>
 
+      {/* Quick Prompt Pills */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, paddingHorizontal: 12, paddingBottom: 8 }}>
+        <TouchableOpacity
+          style={{ paddingVertical: 6, paddingHorizontal: 10, backgroundColor: colors.cardBg, borderRadius: 14, borderWidth: 1, borderColor: colors.border }}
+          onPress={() => handleSendMessage("Granny, sing me a morning lullaby", 'song')}
+        >
+          <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>🎵 Sing Song</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ paddingVertical: 6, paddingHorizontal: 10, backgroundColor: colors.cardBg, borderRadius: 14, borderWidth: 1, borderColor: colors.border }}
+          onPress={() => handleSendMessage("Granny, recite a peaceful poem", 'poem')}
+        >
+          <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>🎶 Recite Poem</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ paddingVertical: 6, paddingHorizontal: 10, backgroundColor: colors.cardBg, borderRadius: 14, borderWidth: 1, borderColor: colors.border }}
+          onPress={() => handleSendMessage("Say our schedule slowly word by word", 'word')}
+        >
+          <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>🗣️ Word-by-Word</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Voice Waveform Indicator */}
       {isListening && (
         <View style={[styles.listeningBar, { backgroundColor: colors.accentLight }]}>
           <Text style={[styles.listeningText, { color: colors.accent }]}>
-            🎙️ Granny is listening to your voice... Speak anytime
+            🎙️ Granny is listening to your voice... (Simulating: "Sing a sweet melody")
           </Text>
         </View>
       )}

@@ -54,8 +54,14 @@ export default function App() {
   const [theatreFeedback, setTheatreFeedback] = useState<string | null>(null);
   const [activeMicroDose, setActiveMicroDose] = useState<{ title: string; prompt: string; task: string } | null>(null);
 
-  // Listening state
+  // Voice state
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingText, setSpeakingText] = useState('');
+  const [speechTranscript, setSpeechTranscript] = useState('');
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const [voiceDeliveryMode, setVoiceDeliveryMode] = useState<'normal' | 'song' | 'poem' | 'word'>('normal');
+  const recognitionRef = React.useRef<any>(null);
 
   // Auth form state
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -73,6 +79,11 @@ export default function App() {
     if (persisted.fontSize) setFontSize(persisted.fontSize);
     if (persisted.highContrast) setHighContrast(persisted.highContrast);
     if (persisted.language) setLanguage(persisted.language);
+
+    // Warm up speech synthesis voices
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+    }
   }, []);
 
   // Apply font size and contrast
@@ -80,6 +91,141 @@ export default function App() {
     document.documentElement.style.fontSize = `${20 * fontSize}px`;
     document.documentElement.setAttribute('data-contrast', highContrast ? 'high' : 'normal');
   }, [fontSize, highContrast]);
+
+  // ─── Speech Synthesis Engine (Multi-Mode: Song, Poem, Word-by-Word, Normal) ──
+  const cleanTextForSpeech = (rawText: string) => {
+    return rawText
+      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .replace(/[*_#`~>]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim();
+  };
+
+  const getWarmVoice = useCallback((lang: string): SpeechSynthesisVoice | null => {
+    if (!('speechSynthesis' in window)) return null;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return null;
+
+    if (lang === 'ta') {
+      const taVoice = voices.find(v => v.lang.toLowerCase().startsWith('ta'));
+      if (taVoice) return taVoice;
+    }
+
+    const preferred = ['Google UK English Female', 'Google US English', 'Samantha', 'Karen', 'Victoria', 'Zira', 'Natural', 'Female'];
+    for (const name of preferred) {
+      const match = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
+      if (match) return match;
+    }
+
+    const enVoice = voices.find(v => v.lang.startsWith('en'));
+    return enVoice || voices[0] || null;
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setSpeakingText('');
+  }, []);
+
+  const speakText = useCallback((textToSpeak: string, mode: 'normal' | 'song' | 'poem' | 'word' = 'normal') => {
+    if (!('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+    const cleaned = cleanTextForSpeech(textToSpeak);
+    if (!cleaned) return;
+
+    const voice = getWarmVoice(language);
+
+    if (mode === 'song') {
+      // Melodic song mode: split into lines/phrases with musical melodic pitches
+      const phrases = cleaned.split(/[,.!?\n]+/).map(p => p.trim()).filter(Boolean);
+      if (phrases.length === 0) return;
+
+      setIsSpeaking(true);
+      setSpeakingText(`🎵 Singing: "${cleaned}"`);
+
+      const melodyPitches = [1.3, 1.45, 1.2, 1.4, 1.15, 1.35];
+
+      phrases.forEach((phrase, idx) => {
+        const utt = new SpeechSynthesisUtterance(phrase);
+        utt.lang = language === 'ta' ? 'ta-IN' : 'en-US';
+        utt.rate = 0.82; // Gentle musical singing cadence
+        utt.pitch = melodyPitches[idx % melodyPitches.length];
+        if (voice) utt.voice = voice;
+
+        if (idx === phrases.length - 1) {
+          utt.onend = () => {
+            setIsSpeaking(false);
+            setSpeakingText('');
+          };
+          utt.onerror = () => {
+            setIsSpeaking(false);
+            setSpeakingText('');
+          };
+        }
+
+        window.speechSynthesis.speak(utt);
+      });
+      return;
+    }
+
+    if (mode === 'word') {
+      // Slow word-by-word enunciated delivery for cognitive clarity
+      const words = cleaned.split(/\s+/).filter(Boolean);
+      if (words.length === 0) return;
+
+      setIsSpeaking(true);
+      setSpeakingText(`🗣️ Word-by-Word: "${cleaned}"`);
+
+      words.forEach((word, idx) => {
+        const utt = new SpeechSynthesisUtterance(word);
+        utt.lang = language === 'ta' ? 'ta-IN' : 'en-US';
+        utt.rate = 0.70; // Slow, crystal-clear enunciation
+        utt.pitch = 1.04;
+        if (voice) utt.voice = voice;
+
+        if (idx === words.length - 1) {
+          utt.onend = () => {
+            setIsSpeaking(false);
+            setSpeakingText('');
+          };
+          utt.onerror = () => {
+            setIsSpeaking(false);
+            setSpeakingText('');
+          };
+        }
+
+        window.speechSynthesis.speak(utt);
+      });
+      return;
+    }
+
+    // Normal or rhythmic poem mode
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.lang = language === 'ta' ? 'ta-IN' : 'en-US';
+    utterance.rate = mode === 'poem' ? 0.86 : 0.92;
+    utterance.pitch = mode === 'poem' ? 1.12 : 1.06;
+    if (voice) utterance.voice = voice;
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setSpeakingText(mode === 'poem' ? `🎶 Poem: "${cleaned}"` : cleaned);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setSpeakingText('');
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setSpeakingText('');
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, [language, getWarmVoice]);
 
   // ─── Auth Handlers ────────────────────────────────────────────────────────
   const handleAuth = async () => {
@@ -103,12 +249,16 @@ export default function App() {
       setToken(result.accessToken);
       persistAuth(result.user, result.accessToken);
       setPage('home');
+      if (autoSpeak) {
+        speakText(`Welcome ${result.user.name || 'dear'}! I am Granny, your caring companion.`);
+      }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed');
     }
   };
 
   const handleLogout = () => {
+    stopSpeaking();
     setUser(null);
     setToken(null);
     clearAuth();
@@ -119,8 +269,10 @@ export default function App() {
 
   // ─── Chat Handler ─────────────────────────────────────────────────────────
   const sendMessage = async (text?: string) => {
-    const msgText = text || chatInput;
-    if (!msgText.trim()) return;
+    const msgText = (text || chatInput).trim();
+    if (!msgText) return;
+
+    stopSpeaking();
 
     const userMsg: ChatMessage = {
       id: `msg_${Date.now()}`,
@@ -130,6 +282,7 @@ export default function App() {
     };
     setMessages(prev => [...prev, userMsg]);
     setChatInput('');
+    setSpeechTranscript('');
     setIsThinking(true);
 
     try {
@@ -144,21 +297,70 @@ export default function App() {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
+      // Detect if user is asking for song/poem/word delivery
+      const lowerText = msgText.toLowerCase();
+      let effectiveMode = voiceDeliveryMode;
+      if (lowerText.includes('sing') || lowerText.includes('song') || lowerText.includes('melody') || lowerText.includes('lullaby')) {
+        effectiveMode = 'song';
+      } else if (lowerText.includes('poem') || lowerText.includes('rhyme')) {
+        effectiveMode = 'poem';
+      } else if (lowerText.includes('word by word') || lowerText.includes('word-by-word') || lowerText.includes('say each word')) {
+        effectiveMode = 'word';
+      }
+
+      if (autoSpeak) {
+        speakText(result.reply, effectiveMode);
+      }
     } catch {
+      const lowerText = msgText.toLowerCase();
+      let fallbackReplies = [
+        "I'm right here with you, dear! It is so lovely to hear your voice. Tell me more about what you're thinking today.",
+        "That is wonderful, dear! You always bring such warmth to my heart. How are you feeling right now?",
+        "I hear you loud and clear, my dear! Remember to take your water and enjoy this peaceful day. What would you like to do next?",
+        "You are so special to all of us. I'm always here listening with all my care!"
+      ];
+
+      let effectiveMode = voiceDeliveryMode;
+      if (lowerText.includes('sing') || lowerText.includes('song') || lowerText.includes('melody') || lowerText.includes('lullaby')) {
+        fallbackReplies = [
+          "Morning bells are ringing bright, birds are singing in the light. Sunshine whispers in your ear, Granny's love is always near!",
+          "Gentle breezes in the tree, family smiles for you and me. Peaceful morning, sweet and calm, rest your heart in nature's balm.",
+          "Sweetest melody of today, joy and blessing on your way. You are cherished, you are dear, hold this melody sincere!"
+        ];
+        effectiveMode = 'song';
+      } else if (lowerText.includes('poem') || lowerText.includes('rhyme')) {
+        fallbackReplies = [
+          "Softly glows the morning sun, a peaceful day has just begun. Memories bloom like flowers fair, wrapped in love and gentle care.",
+          "The jasmine smells so fresh and sweet, pleasant moments we shall greet. Step by step we walk in peace, where worries softly fade and cease."
+        ];
+        effectiveMode = 'poem';
+      } else if (lowerText.includes('word by word') || lowerText.includes('slow')) {
+        fallbackReplies = [
+          "Good morning. I am here. You are safe and doing great.",
+          "Drink warm tea. Take deep breaths. Today is a wonderful day."
+        ];
+        effectiveMode = 'word';
+      }
+
+      const selectedReply = fallbackReplies[Math.floor(Math.random() * fallbackReplies.length)];
       const fallbackMsg: ChatMessage = {
         id: `msg_${Date.now()}_fb`,
         sender: 'assistant',
-        text: "I'm here for you, dear. Could you say that again?",
+        text: selectedReply,
         emotion: 'calm',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, fallbackMsg]);
+      if (autoSpeak) {
+        speakText(selectedReply, effectiveMode);
+      }
     }
     setIsThinking(false);
   };
 
   // ─── Game Handlers ────────────────────────────────────────────────────────
   const startGame = (gameKey: string) => {
+    stopSpeaking();
     const game = getGameByKey(gameKey);
     if (!game) return;
 
@@ -171,6 +373,10 @@ export default function App() {
     setCurrentGameKey(gameKey);
     setGamePhase('memorize');
     setPage('play');
+
+    if (autoSpeak) {
+      speakText(`Let's play ${game.title}! Memorize the items on your screen.`);
+    }
 
     // Memorize timer
     setGameTimer(difficulty.delaySeconds);
@@ -196,11 +402,15 @@ export default function App() {
 
     if (!nextItem) {
       setGamePhase('result');
+      if (autoSpeak) {
+        speakText("Game completed! Wonderful effort, dear!");
+      }
     }
     setGameSession({ ...gameSession });
   };
 
   const finishGame = () => {
+    stopSpeaking();
     setGameSession(null);
     setCurrentGameKey(null);
     setGamePhase('memorize');
@@ -209,36 +419,77 @@ export default function App() {
 
   // ─── Voice (Web Speech API) ───────────────────────────────────────────────
   const toggleListening = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser. Try Chrome.');
+    // Barge-in: interrupt speech if AI is currently talking
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser. Please try Google Chrome or Microsoft Edge.');
       return;
     }
 
     if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
       setIsListening(false);
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = language === 'ta' ? 'ta-IN' : 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.lang = language === 'ta' ? 'ta-IN' : 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      if (page === 'companion') {
-        sendMessage(transcript);
-      } else {
-        setChatInput(transcript);
-      }
-    };
-    recognition.onerror = () => setIsListening(false);
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechTranscript('');
+      };
 
-    recognition.start();
-  }, [isListening, language, page]);
+      recognition.onresult = (event: any) => {
+        let interim = '';
+        let final = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+
+        const currentText = final || interim;
+        setSpeechTranscript(currentText);
+
+        if (final && final.trim()) {
+          setIsListening(false);
+          if (page !== 'companion') {
+            setPage('companion');
+          }
+          sendMessage(final.trim());
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          alert('Microphone access was not granted. Please allow microphone permissions in your browser.');
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      setIsListening(false);
+    }
+  }, [isListening, isSpeaking, language, page, stopSpeaking, sendMessage]);
 
   // ============================================================================
   // RENDER
@@ -462,26 +713,183 @@ export default function App() {
         {/* ─── COMPANION CHAT ──────────────────────────────────────────────────── */}
         {page === 'companion' && (
           <>
-            <div className="page-header">
+            <div className="page-header" style={{ position: 'relative' }}>
               <h2>💬 Voice Companion</h2>
-              <p className="text-muted">I'm here to listen and chat with you</p>
+              <p className="text-muted">I'm here to listen, talk, and keep you company</p>
+              
+              {/* Voice auto-speak toggle and Delivery Mode Selector */}
+              <div style={{ marginTop: 'var(--space-sm)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-md)' }}>
+                  <button
+                    className={`btn ${autoSpeak ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: 13, padding: '4px 14px', borderRadius: 'var(--radius-full)' }}
+                    onClick={() => setAutoSpeak(!autoSpeak)}
+                  >
+                    {autoSpeak ? '🔊 Voice Audio: ON' : '🔇 Voice Audio: OFF'}
+                  </button>
+                  {isSpeaking && (
+                    <button
+                      className="btn btn-danger"
+                      style={{ fontSize: 13, padding: '4px 14px', borderRadius: 'var(--radius-full)' }}
+                      onClick={stopSpeaking}
+                    >
+                      ⏹ Stop Voice
+                    </button>
+                  )}
+                </div>
+
+                {/* Voice Delivery Modes: Normal, Song, Poem, Word-by-Word */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {[
+                    { mode: 'normal', label: '💬 Normal Speech' },
+                    { mode: 'song', label: '🎵 Sing Song' },
+                    { mode: 'poem', label: '🎶 Poem / Rhyme' },
+                    { mode: 'word', label: '🗣️ Word-by-Word' },
+                  ].map(m => (
+                    <button
+                      key={m.mode}
+                      onClick={() => setVoiceDeliveryMode(m.mode as any)}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderRadius: 12,
+                        cursor: 'pointer',
+                        border: voiceDeliveryMode === m.mode ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: voiceDeliveryMode === m.mode ? 'var(--color-primary-bg)' : 'var(--color-bg-card)',
+                        color: voiceDeliveryMode === m.mode ? 'var(--color-primary)' : 'var(--color-text-muted)'
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="chat-container" style={{ minHeight: '50vh' }}>
+            {/* Quick Large Voice Prompt Card */}
+            <div
+              className="card card-interactive"
+              onClick={toggleListening}
+              style={{
+                maxWidth: 700,
+                margin: '0 auto var(--space-md) auto',
+                background: isListening
+                  ? 'linear-gradient(135deg, #FFEBEE, #FFCDD2)'
+                  : isSpeaking
+                  ? 'linear-gradient(135deg, #E8F5E9, #C8E6C9)'
+                  : 'linear-gradient(135deg, var(--color-primary-bg), #FFE0CC)',
+                border: isListening ? '2px solid #E53935' : isSpeaking ? '2px solid #43A047' : '2px solid var(--color-primary)',
+                textAlign: 'center',
+                padding: 'var(--space-md)'
+              }}
+            >
+              <div style={{ fontSize: 40, marginBottom: 2 }}>
+                {isListening ? '🎙️' : isSpeaking ? '👵🔊' : '🗣️'}
+              </div>
+              <h3 style={{ color: isListening ? '#C62828' : isSpeaking ? '#2E7D32' : 'var(--color-primary)' }}>
+                {isListening
+                  ? 'Listening to you... (Speak now)'
+                  : isSpeaking
+                  ? 'Granny is speaking to you...'
+                  : 'Tap here to Speak to Granny'}
+              </h3>
+              <p className="text-muted" style={{ fontSize: 13, marginTop: 2 }}>
+                {isListening
+                  ? (speechTranscript || 'Speak clearly into your microphone...')
+                  : isSpeaking
+                  ? 'Tap to pause or interrupt'
+                  : `Mode: ${voiceDeliveryMode.toUpperCase()} — Tap mic to talk!`}
+              </p>
+            </div>
+
+            {/* Quick Voice Prompt Pills for Song / Rhyme / Word / Memory */}
+            <div style={{ maxWidth: 700, margin: '0 auto var(--space-md) auto', display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 16 }}
+                onClick={() => { setVoiceDeliveryMode('song'); sendMessage("Granny, please sing me a cheerful morning song!"); }}
+              >
+                🎵 Sing me a song
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 16 }}
+                onClick={() => { setVoiceDeliveryMode('poem'); sendMessage("Recite a peaceful comforting poem for me."); }}
+              >
+                🎶 Recite a poem
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 16 }}
+                onClick={() => { setVoiceDeliveryMode('word'); sendMessage("Tell me about our morning routine slowly word by word."); }}
+              >
+                🗣️ Say word-by-word
+              </button>
+            </div>
+
+            <div className="chat-container" style={{ minHeight: '40vh' }}>
               {messages.length === 0 && (
                 <div className="text-center" style={{ padding: 'var(--space-2xl)' }}>
                   <div style={{ fontSize: 72 }}>👵</div>
                   <p className="text-large mt-lg">Hello, dear! I'm Granny.</p>
-                  <p className="text-muted mt-sm">Say hello or type a message below.</p>
+                  <p className="text-muted mt-sm">Say hello with your voice or choose a song / poem prompt above.</p>
+                  <button
+                    className="btn btn-primary btn-large mt-lg"
+                    onClick={() => {
+                      const greeting = "Hello dear! How are you feeling today? I am so happy to chat with you.";
+                      const assistantMsg: ChatMessage = {
+                        id: `msg_welcome_${Date.now()}`,
+                        sender: 'assistant',
+                        text: greeting,
+                        emotion: 'warm',
+                        timestamp: new Date(),
+                      };
+                      setMessages([assistantMsg]);
+                      if (autoSpeak) speakText(greeting, voiceDeliveryMode);
+                    }}
+                  >
+                    👵 Say Hello to Granny
+                  </button>
                 </div>
               )}
 
               {messages.map(msg => (
                 <div key={msg.id} className={`chat-bubble ${msg.sender}`}>
-                  {msg.text}
-                  {msg.emotion && msg.sender === 'assistant' && (
-                    <div style={{ fontSize: 12, marginTop: 4, opacity: 0.7 }}>
-                      Mood: {msg.emotion}
+                  <div style={{ fontSize: 'var(--font-size-base)' }}>{msg.text}</div>
+                  
+                  {msg.sender === 'assistant' && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 6, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="replay-audio-btn"
+                          onClick={() => speakText(msg.text, 'normal')}
+                          title="Listen as normal speech"
+                        >
+                          🔊 Speak
+                        </button>
+                        <button
+                          className="replay-audio-btn"
+                          style={{ borderColor: '#7E22CE', color: '#7E22CE' }}
+                          onClick={() => speakText(msg.text, 'song')}
+                          title="Sing this message melodically"
+                        >
+                          🎵 Sing
+                        </button>
+                        <button
+                          className="replay-audio-btn"
+                          style={{ borderColor: '#0284C7', color: '#0284C7' }}
+                          onClick={() => speakText(msg.text, 'word')}
+                          title="Speak slowly word by word"
+                        >
+                          🗣️ Word-by-Word
+                        </button>
+                      </div>
+                      {msg.emotion && (
+                        <span style={{ fontSize: 12, opacity: 0.75, color: 'var(--color-text-muted)' }}>
+                          Mood: {msg.emotion}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -489,8 +897,11 @@ export default function App() {
 
               {isThinking && (
                 <div className="chat-bubble assistant">
-                  <div className="waveform">
-                    {[1,2,3,4,5].map(i => <div key={i} className="waveform-bar" />)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Granny is listening & thinking...</span>
+                    <div className="waveform">
+                      {[1,2,3,4,5].map(i => <div key={i} className="waveform-bar" />)}
+                    </div>
                   </div>
                 </div>
               )}
@@ -499,9 +910,13 @@ export default function App() {
             {/* Chat input */}
             <div style={{ position: 'fixed', bottom: 68, left: 0, right: 0, padding: 'var(--space-md) var(--space-lg)', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)' }}>
               <div style={{ display: 'flex', gap: 'var(--space-sm)', maxWidth: 700, margin: '0 auto' }}>
-                <input className="input" placeholder="Type your message..." value={chatInput}
+                <input
+                  className="input"
+                  placeholder={isListening ? "Listening to your voice..." : "Type or speak your message..."}
+                  value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendMessage()} />
+                  onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                />
                 <button className="btn btn-primary" onClick={() => sendMessage()}>Send</button>
               </div>
             </div>
@@ -826,10 +1241,67 @@ export default function App() {
         )}
       </div>
 
+      {/* ─── Floating Voice HUD (Active whenever listening, speaking, or thinking) ── */}
+      {(isListening || isSpeaking || isThinking) && (
+        <div className="voice-hud">
+          <div className="voice-hud-indicator">
+            <span style={{ fontSize: 28 }}>
+              {isListening ? '🎙️' : isSpeaking ? '👵' : '⏳'}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="voice-hud-text">
+                {isListening
+                  ? (speechTranscript ? `"${speechTranscript}"` : 'Listening to you... Speak now')
+                  : isSpeaking
+                  ? 'Granny is speaking...'
+                  : 'Granny is thinking...'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isSpeaking && (
+              <div className="waveform green">
+                {[1,2,3,4,5].map(i => <div key={i} className="waveform-bar" />)}
+              </div>
+            )}
+            {isListening && (
+              <div className="waveform">
+                {[1,2,3,4,5].map(i => <div key={i} className="waveform-bar" />)}
+              </div>
+            )}
+            {isSpeaking && (
+              <button
+                className="btn btn-danger"
+                style={{ padding: '4px 10px', fontSize: 12, borderRadius: 'var(--radius-full)' }}
+                onClick={stopSpeaking}
+              >
+                Stop Voice
+              </button>
+            )}
+            {isListening && (
+              <button
+                className="btn btn-secondary"
+                style={{ padding: '4px 10px', fontSize: 12, borderRadius: 'var(--radius-full)' }}
+                onClick={() => {
+                  if (recognitionRef.current) recognitionRef.current.stop();
+                  setIsListening(false);
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ─── Persistent Mic Button ──────────────────────────────────────────── */}
-      <button className={`mic-button ${isListening ? 'listening' : ''}`} onClick={toggleListening}
-        title={isListening ? 'Stop listening' : 'Tap to speak'}>
-        {isListening ? '⏹' : '🎙️'}
+      <button
+        className={`mic-button ${isListening ? 'listening' : isSpeaking ? 'speaking' : ''}`}
+        onClick={toggleListening}
+        title={isListening ? 'Stop listening' : isSpeaking ? 'Tap to speak / interrupt' : 'Tap to talk to Granny'}
+      >
+        {isListening ? '⏹' : isSpeaking ? '🔊' : '🎙️'}
       </button>
 
       {/* ─── Bottom Navigation ─────────────────────────────────────────────── */}
