@@ -102,16 +102,19 @@ async def _generate_response(
     history: List[ChatMessage]
 ) -> str:
     """
-    Generate a response using Google Gemini API.
-    Falls back to OpenAI or intelligent elderly-companion mock.
+    Generate a response using Google Gemini API with primary and backup key rotation.
+    Falls back to intelligent elderly-companion mock if all calls fail.
     """
-    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    primary_key = os.getenv("GEMINI_API_KEY", "").strip()
+    backup_key = os.getenv("GEMINI_API_KEY_BACKUP", "").strip()
     gemini_model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash").strip()
 
-    # 1. Try Google Gemini API
-    if gemini_key:
+    keys_to_try = [k for k in [primary_key, backup_key] if k]
+
+    # 1. Try Google Gemini API with key fallback
+    for api_key in keys_to_try:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={api_key}"
             
             contents = []
             for msg in history[-8:]:
@@ -146,9 +149,9 @@ async def _generate_response(
                 if text_reply:
                     return text_reply.strip()
         except Exception as e:
-            print(f"[LLM] Gemini API call error: {e}")
+            print(f"[LLM] Gemini API key attempt failed: {e}. Trying next key if available.")
 
-    # 2. Contextual Elderly Companion Mock
+    # 2. Contextual Elderly Companion Mock Fallback
     return _mock_response(user_text)
 
 
