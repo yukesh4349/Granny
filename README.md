@@ -46,6 +46,7 @@ India has over **138 million elderly citizens**, millions of whom face early cog
 **Granny** is built as **one continuous, voice-first world** (Home → Market → Journey → Music → Story → Garden → Album) wrapped around a memory-assistant companion that quietly tracks accuracy, response time, and mistakes, reshaping future interactions around the user without patronizing fail states.
 
 ### 💡 The 5 Architectural Pillars (from Granny Master Blueprint)
+
 1. **Identity-Preserving, Not Generic**: Games and dialogues are populated with the elder's own rooms, family photos, and life stories, not stock puzzles.
 2. **Voice-First, Not Tap-First**: Speech is the primary interaction mode; oversized 64px touch targets serve as an accessible fallback.
 3. **Adaptive by Design**: A single centralized Exponential Moving Average (EMA) difficulty engine governs every game and interaction.
@@ -78,6 +79,7 @@ India has over **138 million elderly citizens**, millions of whom face early cog
 ```
 
 ### ⏱️ 90-Second Live Demo Flow (SIH Evaluation Script)
+
 | Time | On-Screen Action | Voiceover Focus | Key Judge Wow Factor |
 | :--- | :--- | :--- | :--- |
 | **00:00 - 00:20** | **Elder Home & Action Cards** | *"Notice the ultra-accessible 64px targets, warm contrast, and hands-free voice interface."* | WCAG AAA standard; zero cognitive friction. |
@@ -90,6 +92,7 @@ India has over **138 million elderly citizens**, millions of whom face early cog
 ## 🌟 Key Features (from Master Blueprint)
 
 ### 2.1 Core MVP Features
+
 - **Interconnected Cognitive Game World**: 10 nostalgic games linked into an explorable canvas rather than isolated icon grids.
 - **Dynamic Adaptive Difficulty Engine**: Centralized Exponential Moving Average (EMA) balancing accuracy, latency, and error types into 5 calibrated difficulty levels.
 - **Voice-First Interaction**: Speech-to-text (Whisper) → Intent parsing → Empathetic LLM → Low-latency TTS with conversational cadence and natural pauses.
@@ -100,12 +103,14 @@ India has over **138 million elderly citizens**, millions of whom face early cog
 - **Elderly-First Accessibility**: 48px–64px touch targets, high contrast, large typography, single-column views, and zero dark patterns (no streaks, no guilt-based alerts).
 
 ### 2.2 Companion Intelligence Layer
+
 - **Acoustic & Linguistic Emotion Awareness**: Analyzes emotional state (calm, happy, confused, distressed, sad) and modulates response tone and pacing in real time.
 - **Conversational Continuity**: Persistent session memory so Granny remembers yesterday’s anecdotes and routines.
 - **Voice Recognition per Family Member**: Enrolled voiceprints distinguish callers to personalize greetings (e.g. greeting a grandchild vs caregiver).
 - **Multilingual / Regional Speech**: English and Tamil out of the box, with an extensible i18n layer ready for any regional Indian dialect.
 
 ### 2.3 Stretch / Proprietary Differentiators (Judge Wow Factors)
+
 - **Life-Story Memory Theatre**: LLM transforms personal family anecdotes into choose-your-own-path interactive reminiscence scenes, scaffolded by cognitive level (MMSE-style).
 - **Just-in-Time Micro-Interventions**: 1–3 minute context-aware cognitive micro-doses (post-lunch music recall, morning orientation, evening relaxation).
 - **Family Co-Play Memory Quests**: Multi-generational memory quests where the elder acts as the *Chief Storyteller*.
@@ -141,16 +146,17 @@ interface CognitiveGame {
 | **7** | **🔍 Story Detective** | Auditory Comprehension | Listen to a short spoken folk tale or anecdote and answer gentle comprehension questions. |
 | **8** | **📦 Where Did I Keep It** | Working + Spatial Recall | Everyday objects placed around the house; delayed recall of drawer and shelf locations. |
 | **9** | **🌺 Memory Garden** | Visual + Spatial + Long-Term | Persistent virtual garden where elders plant flowers and test recall of prior placements. |
-| **10**| **📸 Memory Album** | Recognition + Episodic | Reminisce over real family photos and recall details (who was there, year, occasion). |
+| **10** | **📸 Memory Album** | Recognition + Episodic | Reminisce over real family photos and recall details (who was there, year, occasion). |
 
 ---
 
 ## 🏗️ System Architecture & Contracts
 
-Granny follows an enterprise-grade decoupled microservice architecture:
+Granny follows a modular, decoupled service-oriented architecture designed for independent scaling and future integrations.
 
 ```mermaid
 graph TD
+
     subgraph Clients["1. Accessible Client Layer"]
         Mobile["📱 Mobile App<br/>(React Native / Expo)"]
         Web["💻 Web Portal<br/>(React 18 + Vite + TS)"]
@@ -165,9 +171,9 @@ graph TD
     end
 
     subgraph Persistence["3. Persistence & Queuing Layer"]
-        Postgres[("🐘 PostgreSQL (Prisma ORM)<br/>Users, Memories, Sessions, Incidents")]
-        Redis[("⚡ Redis Cache & BullMQ<br/>Session States & Async Task Queues")]
-        FCM["🔔 Firebase Cloud Messaging (FCM)<br/>Instant Family Push Alerts")]
+        Postgres["🐘 PostgreSQL (Prisma ORM)<br/>Users, Memories, Sessions, Incidents"]
+        Redis["⚡ Redis Cache & BullMQ<br/>Session States & Async Task Queues"]
+        FCM["🔔 Firebase Cloud Messaging (FCM)<br/>Instant Family Push Alerts"]
     end
 
     subgraph AI["4. AI Microservice (Python FastAPI)"]
@@ -196,18 +202,23 @@ graph TD
 
     FastAPIGW --> STT
     STT --> DistressGuard
-    DistressGuard -- "Distress Detected" --> SafetyMod
-    DistressGuard -- "Safe" --> EmotionEng
+
+    DistressGuard -->|Distress Detected| SafetyMod
+    DistressGuard -->|Safe| EmotionEng
+
     EmotionEng --> VectorDB
     VectorDB --> LLMPersona
+
     GameMod <--> EMAEngine
     LLMPersona --> TTS
 ```
 
 ### 🔄 Architectural Contract: Pre-LLM Safety & Conversational Loop
+
 ```mermaid
 sequenceDiagram
     autonumber
+
     actor Elder as 👵 Senior User
     participant Client as 📱 Web / Mobile Client
     participant Nest as ⚙️ NestJS API Gateway
@@ -219,12 +230,14 @@ sequenceDiagram
     Nest->>AI: POST /converse (userId, audio/text)
     AI->>AI: Whisper STT converts speech to text
     AI->>AI: Distress Interceptor checks 20+ validated phrases
-    alt 🚨 Distress Phrase Detected (e.g., "I fell", "I feel dizzy")
+
+    alt 🚨 Distress Phrase Detected
         AI-->>Nest: Severity: CRITICAL (Incident logged)
         Nest-->>Caregiver: Real-time FCM Push Notification + SMS Alert
         AI->>AI: Return fixed gentle de-escalation response
         AI->>Client: Stream TTS reassurance audio
         Client->>Elder: "Margaret, stay calm. I have alerted your daughter Priya."
+
     else ✅ Safe Conversational Interaction
         AI->>AI: Emotion Analyzer evaluates acoustic & linguistic tone
         AI->>AI: Query pgvector for relevant personal memory embeddings
@@ -337,6 +350,7 @@ Granny/
 ## 🚀 Getting Started (Quick Start)
 
 ### 📋 Prerequisites
+
 - **Node.js**: v18.x or v20.x
 - **Python**: v3.10 or v3.11
 - **Git**
@@ -365,6 +379,7 @@ Once running, access the web portal at: **`http://localhost:5173`**
 ### Option B: Local Step-by-Step Setup
 
 #### 1. Clone & Install Monorepo Dependencies
+
 ```bash
 git clone https://github.com/yukesh4349/Granny.git
 cd Granny
@@ -374,17 +389,20 @@ npm install
 ```
 
 #### 2. Configure Environment Variables
+
 ```bash
 cp .env.example .env
 ```
 
 #### 3. Setup Python AI Microservice
+
 ```bash
 cd ai-services
 python -m venv venv
 
 # On Windows:
 venv\Scripts\activate
+
 # On Linux/macOS:
 # source venv/bin/activate
 
@@ -393,6 +411,7 @@ cd ..
 ```
 
 #### 4. Database Migration & Seeding
+
 ```bash
 # Generate Prisma Client & apply migrations
 npx prisma migrate dev --schema=database/prisma/schema.prisma
@@ -402,6 +421,7 @@ npx ts-node database/seed/seed.ts
 ```
 
 #### 5. Launch Development Services
+
 Run the services concurrently in separate terminals:
 
 ```bash
@@ -455,6 +475,7 @@ Tracked against the 13 phases in `others/checklist.md`:
 ## 🛡️ Safety, Ethics & Accessibility Checklist
 
 Verified against Section 11 of the Master Build Blueprint:
+
 - [x] **Non-Diagnostic Policy**: The companion never states or implies a medical diagnosis and never suggests altering prescription dosages or schedules.
 - [x] **Pre-LLM Distress Interception**: Validated against 20+ direct and indirect distress phrases (*"I fell"*, *"I can't breathe"*, *"I feel scared"*).
 - [x] **Elderly-First Accessibility**: 48px+ touch targets (primary actions 64px+), base font 20px+, WCAG AAA compliance on primary text.
@@ -470,18 +491,12 @@ Verified against Section 11 of the Master Build Blueprint:
 
 | Name | Role / Focus Area |
 | :--- | :--- |
-| **Yukesh Kanna U** | Project Lead & Full-Stack System Architecture |
-| **Aadil J M** | Backend Architecture, NestJS & API Orchestration |
-| **Agalya** | AI Microservices, Whisper STT & LLM Pipeline |
-| **Harini** | Adaptive Difficulty Engine & Cognitive Game Design |
-| **Nikidha** | Accessible UX/UI Design & Front-End Engineering |
-| **Pavan S Kumar** | Database Architecture, Real-Time Safety & Integration |
-
-### 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
-<div align="center">
+| **Yukesh Kanna U** | |
+| **Aadil J M** | |
+| **Pavan S Kumar** | |
+| **Agalya** | |
+| **Harini** | |
+| **Nikidha** | |
 
 ---
 
