@@ -1,97 +1,205 @@
+// ============================================================================
+// Granny — Prisma Schema (Blueprint Section 5)
+// AI-Based Cognitive Gaming & Memory Assistance for the Elderly
+// ============================================================================
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum Role {
-  ELDERLY
+  ELDER
   CAREGIVER
-  FAMILY
 }
 
-enum PreferredLanguage {
-  EN
-  TA
-}
+// ─── User & Profile ──────────────────────────────────────────────────────────
 
 model User {
-  id                String             @id @default(uuid())
-  email             String?            @unique
-  phoneNumber       String?            @unique
-  name              String
-  role              Role               @default(ELDERLY)
-  language          PreferredLanguage  @default(TA)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id            String    @id @default(uuid())
+  role          Role      @default(ELDER)
+  name          String
+  email         String?   @unique
+  phone         String?   @unique
+  passwordHash  String?
+  language      String    @default("en")
+  familyGroupId String?
+  familyGroup   FamilyGroup? @relation(fields: [familyGroupId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  profile           Profile?
-  memories          Memory[]
-  conversations     Conversation[]
-  medications       Medication[]
-  gameSessions      GameSession[]
+  profile       ElderProfile?
+  gameSessions  GameSession[]
+  memories      Memory[]
+  conversations Conversation[]
+  reminders     Reminder[]
+  incidents     SafetyIncident[]
+
+  @@map("users")
 }
 
-model Profile {
-  id                String             @id @default(uuid())
-  userId            String             @unique
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dateOfBirth       DateTime?
-  emergencyContact  String?
-  medicalNotes      String?
-  voiceTone         String?            @default("warm_compassionate")
+model ElderProfile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth  DateTime?
+  ageGroup     String?
+  interests    String[]
+  cognitiveLvl Int      @default(3)  // 1–5, drives base difficulty
+  culturalTags String[]
+  voiceTone    String?  @default("warm_compassionate")
+  emergencyContact String?
+  medicalNotes String?
+
+  @@map("elder_profiles")
 }
+
+// ─── Family ──────────────────────────────────────────────────────────────────
+
+model FamilyGroup {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  members   User[]
+  consents  ConsentRecord[]
+
+  @@map("family_groups")
+}
+
+model ConsentRecord {
+  id            String   @id @default(uuid())
+  familyGroupId String
+  familyGroup   FamilyGroup @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  elderId       String
+  caregiverId   String
+  scope         String   // "memories" | "location" | "health" | "games"
+  granted       Boolean  @default(false)
+  grantedAt     DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime @default(now())
+
+  @@map("consent_records")
+}
+
+// ─── Memory ──────────────────────────────────────────────────────────────────
 
 model Memory {
-  id                String             @id @default(uuid())
-  userId            String
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title             String
-  content           String
-  tags              String[]
-  createdAt         DateTime           @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "fact" | "anecdote" | "photo" | "routine"
+  title     String?
+  content   String
+  tags      String[]
+  imageUrl  String?
+  addedBy   String   @default("ELDER") // ELDER | CAREGIVER | SYSTEM
+  // embedding stored externally in vector DB; reference ID kept here
+  embeddingRef String?
+  createdAt DateTime @default(now())
+
+  @@map("memories")
 }
 
-model Conversation {
-  id                String             @id @default(uuid())
-  userId            String
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  summary           String?
-  createdAt         DateTime           @default(now())
-  messages          Message[]
-}
+// ─── Games ───────────────────────────────────────────────────────────────────
 
-model Message {
-  id                String             @id @default(uuid())
-  conversationId    String
-  conversation      Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender            String             // "user" or "assistant"
-  text              String
-  audioUrl          String?
-  emotion           String?
-  createdAt         DateTime           @default(now())
-}
+model Game {
+  id   String @id @default(uuid())
+  key  String @unique
+  name String
 
-model Medication {
-  id                String             @id @default(uuid())
-  userId            String
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name              String
-  dosage            String
-  timeOfDay         String[]           // e.g. ["08:00", "20:00"]
-  instructions      String?
-  isActive          Boolean            @default(true)
+  @@map("games")
 }
 
 model GameSession {
-  id                String             @id @default(uuid())
-  userId            String
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gameType          String             // e.g. "memory_recall", "word_association", "trivia"
-  score             Int                @default(0)
-  durationSeconds   Int                @default(0)
-  playedAt          DateTime           @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameKey    String
+  difficulty Int       @default(3)
+  score      Int       @default(0)
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  attempts   Attempt[]
+
+  @@map("game_sessions")
+}
+
+model Attempt {
+  id         String      @id @default(uuid())
+  sessionId  String
+  session    GameSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  itemIndex  Int
+  correct    Boolean
+  latencyMs  Int
+  errorType  String?
+  createdAt  DateTime    @default(now())
+
+  @@map("attempts")
+}
+
+// ─── Conversations ───────────────────────────────────────────────────────────
+
+model Conversation {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary   String?
+  createdAt DateTime  @default(now())
+  messages  Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String       // "user" | "assistant"
+  text           String
+  audioUrl       String?
+  emotion        String?      // "happy" | "sad" | "confused" | "distressed" | "calm"
+  distressFlag   Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@map("messages")
+}
+
+// ─── Reminders ───────────────────────────────────────────────────────────────
+
+model Reminder {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            String    // "medication" | "hydration" | "activity"
+  title           String
+  description     String?
+  scheduleCron    String    // cron expression
+  isActive        Boolean   @default(true)
+  lastConfirmedAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@map("reminders")
+}
+
+// ─── Safety ──────────────────────────────────────────────────────────────────
+
+model SafetyIncident {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  triggerText String
+  emotion     String?
+  severity    String   @default("low") // "low" | "medium" | "high" | "critical"
+  alertsSent  Boolean  @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@map("safety_incidents")
 }

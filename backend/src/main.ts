@@ -1,11 +1,35 @@
+// ============================================================================
+// Backend Entry Point — NestJS bootstrap
+// ============================================================================
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+
+  // Global prefix
+  app.setGlobalPrefix('api');
+
+  // Enable CORS for web and mobile clients
+  app.enableCors({
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:19006'],
+    credentials: true,
+  });
+
+  // Global exception filter
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Health check at root
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.get('/health', (_req: any, res: any) => {
+    res.json({ status: 'ok', service: 'granny-backend', timestamp: new Date().toISOString() });
+  });
+
   const port = process.env.PORT || 4000;
   await app.listen(port);
-  console.log(`Backend is running on: http://localhost:${port}`);
+  console.log(`🧓 Granny Backend is running on: http://localhost:${port}`);
+  console.log(`📡 API base: http://localhost:${port}/api`);
+  console.log(`❤️ Health: http://localhost:${port}/health`);
 }
 bootstrap();
