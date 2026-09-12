@@ -23,8 +23,13 @@
         "backgroundColor": "#FAF7F2"
       }
     },
+    "scheme": "granny",
+    "plugins": [
+      "expo-router"
+    ],
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "extra": {
       "eas": {
