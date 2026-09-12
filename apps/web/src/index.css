@@ -4,13 +4,13 @@
    ============================================================================ */
 
 /* ─── Google Fonts ─────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 /* ─── CSS Custom Properties (Design Tokens) ────────────────────────────────── */
 :root {
   /* Typography */
-  --font-primary: 'Outfit', 'Inter', system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  --font-primary: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-size-base: 20px;
   --font-size-lg: 24px;
   --font-size-xl: 30px;
@@ -18,28 +18,28 @@
   --font-size-3xl: 48px;
   --font-size-sm: 16px;
 
-  /* Colors — Warm, high-contrast elderly-friendly palette */
-  --color-bg: #FFF8F0;
-  --color-bg-card: #FFFFFF;
-  --color-bg-dark: #1A1A2E;
-  --color-text: #1A1A2E;
-  --color-text-secondary: #4A4A6A;
-  --color-text-muted: #7A7A9A;
+  /* Colors — Warm, high-contrast elderly-friendly palette (Redesign) */
+  --color-bg: #f5fbf6; /* surface */
+  --color-bg-card: #ffffff; /* surface-container-lowest */
+  --color-bg-dark: #dee4df; /* surface-container-highest */
+  --color-text: #171d1a; /* on-surface */
+  --color-text-secondary: #404942; /* on-surface-variant */
+  --color-text-muted: #707972; /* outline */
 
-  /* Primary: Warm coral/orange — inviting & gentle */
-  --color-primary: #E8734A;
-  --color-primary-light: #FF9A76;
-  --color-primary-dark: #C85A30;
-  --color-primary-bg: #FFF0E8;
+  /* Primary: Sage Green — inviting & gentle */
+  --color-primary: #3b7a57; /* primary-container */
+  --color-primary-light: #93d5ac; /* inverse-primary */
+  --color-primary-dark: #206140; /* primary */
+  --color-primary-bg: #eff5f0; /* surface-container-low */
 
-  /* Secondary: Soft teal — calming & trustworthy */
-  --color-secondary: #2BA3A0;
-  --color-secondary-light: #5EC4C0;
-  --color-secondary-dark: #1D7A78;
+  /* Secondary: Warm Terracotta — calming & trustworthy */
+  --color-secondary: #fc9761; /* secondary-container */
+  --color-secondary-light: #ffdbcb; /* secondary-fixed */
+  --color-secondary-dark: #974818; /* secondary */
 
-  /* Accent: Warm gold — for highlights */
-  --color-accent: #F4A836;
-  --color-accent-light: #FFD07A;
+  /* Accent: Soft Sky Blue — for highlights */
+  --color-accent: #1e70c0; /* tertiary-container */
+  --color-accent-light: #d4e3ff; /* tertiary-fixed */
 
   /* Status colors */
   --color-success: #4CAF50;

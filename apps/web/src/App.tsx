@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { loadPersistedState, persistAuth, clearAuth, persistPreferences } from './store/appStore';
 import { authApi, conversationApi, remindersApi, memoryApi, gamesApi } from './services/api';
 import { ALL_GAMES, getGameByKey } from './features/games/engine/games';
+import AppShell from './components/navigation/AppShell';
 import type { SessionState, DifficultyParams } from './features/games/engine/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -366,14 +367,14 @@ export default function App() {
 
   // ─── Main App (All other pages) ───────────────────────────────────────────
   return (
-    <div className="page">
+    <AppShell user={user!} page={page} setPage={setPage} onLogout={handleLogout}>
       {/* Emergency button — always visible */}
       <button className="emergency-btn" onClick={() => alert('Calling your emergency contact...')}>
         🆘 Help
       </button>
 
       {/* Page Content */}
-      <div className="container" style={{ paddingTop: 'var(--space-lg)', paddingBottom: '120px' }}>
+      <div className="container" style={{ paddingBottom: '120px' }}>
 
         {/* ─── HOME ────────────────────────────────────────────────────────────── */}
         {page === 'home' && (
@@ -389,25 +390,25 @@ export default function App() {
               {/* Quick actions */}
               <div className="grid-2">
                 <button className="card card-interactive" onClick={() => setPage('companion')}
-                  style={{ background: 'linear-gradient(135deg, var(--color-primary-bg), #FFE0CC)', textAlign: 'center' }}>
+                  style={{ background: 'linear-gradient(135deg, var(--color-bg-card), var(--color-primary-bg))', textAlign: 'center' }}>
                   <div style={{ fontSize: 48 }}>💬</div>
                   <h3 className="mt-sm">Talk to Granny</h3>
                   <p className="text-muted">Voice companion chat</p>
                 </button>
                 <button className="card card-interactive" onClick={() => setPage('games')}
-                  style={{ background: 'linear-gradient(135deg, #E8F5E9, #C8E6C9)', textAlign: 'center' }}>
+                  style={{ background: 'linear-gradient(135deg, var(--color-bg-card), var(--color-primary-light))', textAlign: 'center' }}>
                   <div style={{ fontSize: 48 }}>🧩</div>
                   <h3 className="mt-sm">Play Games</h3>
                   <p className="text-muted">10 memory games</p>
                 </button>
                 <button className="card card-interactive" onClick={() => setPage('health')}
-                  style={{ background: 'linear-gradient(135deg, #E3F2FD, #BBDEFB)', textAlign: 'center' }}>
+                  style={{ background: 'linear-gradient(135deg, var(--color-bg-card), var(--color-accent-light))', textAlign: 'center' }}>
                   <div style={{ fontSize: 48 }}>💊</div>
                   <h3 className="mt-sm">Health & Meds</h3>
                   <p className="text-muted">Reminders & schedule</p>
                 </button>
                 <button className="card card-interactive" onClick={() => setPage('memory')}
-                  style={{ background: 'linear-gradient(135deg, #F3E5F5, #E1BEE7)', textAlign: 'center' }}>
+                  style={{ background: 'linear-gradient(135deg, var(--color-bg-card), var(--color-secondary-light))', textAlign: 'center' }}>
                   <div style={{ fontSize: 48 }}>📸</div>
                   <h3 className="mt-sm">Memories</h3>
                   <p className="text-muted">Your life stories</p>
@@ -415,11 +416,11 @@ export default function App() {
               </div>
 
               {/* JIT Micro-Intervention Quick Spark */}
-              <div className="card" style={{ background: 'linear-gradient(135deg, #FFF9C4, #FFF176)', border: '2px solid #FBC02D' }}>
+              <div className="card" style={{ background: 'var(--color-primary-bg)', border: '1px solid var(--color-border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <h3 style={{ color: '#F57F17' }}>✨ 2-Minute Brain Spark</h3>
-                    <p style={{ color: '#5D4037', marginTop: 4 }}>
+                    <h3 style={{ color: 'var(--color-primary-dark)' }}>✨ 2-Minute Brain Spark</h3>
+                    <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
                       {activeMicroDose ? activeMicroDose.task : "Quick post-lunch memory check: What is one sweet family memory you smiled at today?"}
                     </p>
                   </div>
@@ -437,12 +438,12 @@ export default function App() {
 
               {/* Life-Story Memory Theatre Highlight */}
               <div className="card card-interactive" onClick={() => { setTheatreStep(0); setTheatreFeedback(null); setPage('theatre'); }}
-                style={{ background: 'linear-gradient(135deg, #FFE0B2, #FFCC80)', border: '2px solid #FB8C00' }}>
+                style={{ background: 'linear-gradient(135deg, var(--color-secondary-light), var(--color-secondary))', border: '1px solid var(--color-secondary-dark)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
                   <div style={{ fontSize: 44 }}>🎭</div>
                   <div>
-                    <h3 style={{ color: '#E65100' }}>Life-Story Memory Theatre</h3>
-                    <p style={{ color: '#6D4C41', marginTop: 2 }}>
+                    <h3 style={{ color: 'white' }}>Life-Story Memory Theatre</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.9)', marginTop: 2 }}>
                       Interactive choose-your-own-path memory scene from your family stories.
                     </p>
                   </div>
@@ -618,78 +619,85 @@ export default function App() {
 
         {/* ─── CAREGIVER DASHBOARD ─────────────────────────────────────────────── */}
         {page === 'dashboard' && (
-          <>
-            <div className="page-header">
-              <h2>📊 Caregiver Dashboard</h2>
-              <p className="text-muted">Monitoring {user?.name || 'Elder'}'s wellbeing</p>
+          <div className="stack" style={{ gap: 'var(--space-xl)' }}>
+            <div className="page-header" style={{ textAlign: 'left', padding: '0 0 var(--space-md) 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                <span className="text-secondary" style={{ fontSize: 'var(--font-size-2xl)' }}>🌿</span>
+                <h2>{user?.name || 'Lakshmi'}'s Memory Journey</h2>
+              </div>
+              <p className="text-muted" style={{ fontSize: 'var(--font-size-lg)' }}>Here's how her journey has been going.</p>
             </div>
 
-            <div className="stack">
-              {/* Adherence */}
+            {/* AI Journey Summary */}
+            <div className="card" style={{ background: 'var(--color-primary-bg)', border: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
+                <span style={{ fontSize: '24px' }}>✨</span>
+                <h3 style={{ color: 'var(--color-primary-dark)' }}>AI Journey Summary</h3>
+              </div>
+              <p style={{ color: 'var(--color-text)' }}>
+                {user?.name || 'Lakshmi'} had a consistent week and explored several memory activities. She particularly enjoyed music and garden activities. Upcoming activities have been gently adjusted to match her current pace.
+              </p>
+            </div>
+
+            {/* Overview Cards */}
+            <div className="grid-2">
               <div className="card">
-                <h3>💊 Medication Adherence</h3>
-                <div style={{ marginTop: 'var(--space-md)', display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
-                  <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--color-success)' }}>85%</div>
-                  <div>
-                    <p>5 of 6 reminders confirmed today</p>
-                    <p className="text-muted">Missed: Afternoon medicine (2:00 PM)</p>
+                <p className="text-muted uppercase" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Sessions</p>
+                <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700, color: 'var(--color-primary)' }}>12</div>
+                <p className="text-secondary" style={{ fontSize: 'var(--font-size-sm)' }}>This week</p>
+              </div>
+              <div className="card">
+                <p className="text-muted uppercase" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Minutes Active</p>
+                <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700, color: 'var(--color-primary)' }}>145</div>
+                <p className="text-secondary" style={{ fontSize: 'var(--font-size-sm)' }}>Consistent rhythm</p>
+              </div>
+              <div className="card">
+                <p className="text-muted uppercase" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Activities Explored</p>
+                <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700, color: 'var(--color-primary)' }}>4</div>
+                <p className="text-secondary" style={{ fontSize: 'var(--font-size-sm)' }}>Favorites: Music & Garden</p>
+              </div>
+              <div className="card">
+                <p className="text-muted uppercase" style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>Memories Created</p>
+                <div style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700, color: 'var(--color-primary)' }}>3</div>
+                <p className="text-secondary" style={{ fontSize: 'var(--font-size-sm)' }}>2 Family stories shared</p>
+              </div>
+            </div>
+
+            {/* Performance Trend Placeholder */}
+            <div className="card">
+              <h3>📈 Recent Activity Performance</h3>
+              <p className="text-muted mt-sm mb-md">Areas of exploration and recall activities</p>
+              <div style={{ height: '200px', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed var(--color-border)' }}>
+                <span className="text-muted">[ Interactive Trend Chart (Memory, Attention, Recall) ]</span>
+              </div>
+            </div>
+
+            {/* Favorite Activities & Timeline */}
+            <div className="grid-2">
+              <div className="card">
+                <h3>⭐ Activities They Enjoy</h3>
+                <div className="stack" style={{ gap: 'var(--space-md)', marginTop: 'var(--space-md)' }}>
+                  <div style={{ padding: 'var(--space-md)', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ fontWeight: 600 }}>Memory Garden</div>
+                    <div className="text-muted" style={{ fontSize: 'var(--font-size-sm)' }}>Enjoyed frequently</div>
+                  </div>
+                  <div style={{ padding: 'var(--space-md)', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ fontWeight: 600 }}>Complete the Tune</div>
+                    <div className="text-muted" style={{ fontSize: 'var(--font-size-sm)' }}>Very engaged this week</div>
                   </div>
                 </div>
               </div>
-
-              {/* Mood Trend */}
               <div className="card">
-                <h3>❤️ Mood Trend (7 Days)</h3>
-                <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 'var(--space-lg)', padding: 'var(--space-md)' }}>
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
-                    const moods = ['😊', '😐', '😊', '😢', '😊', '😊', '😐'];
-                    return (
-                      <div key={day} className="text-center">
-                        <div style={{ fontSize: 28 }}>{moods[i]}</div>
-                        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>{day}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Game Performance */}
-              <div className="card">
-                <h3>🧩 Game Performance</h3>
-                <div className="stack mt-md">
-                  {[
-                    { game: 'Remember My Home', accuracy: 80, trend: '↑' },
-                    { game: 'Memory Market', accuracy: 65, trend: '→' },
-                    { game: 'Name & Face Match', accuracy: 90, trend: '↑' },
-                  ].map((g, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>{g.game}</span>
-                      <span style={{ fontWeight: 700, color: g.accuracy >= 70 ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                        {g.accuracy}% {g.trend}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Family Co-Play Quests */}
-              <div className="card" style={{ background: 'linear-gradient(135deg, #F3E8FF, #E9D5FF)', border: '2px solid #7E22CE' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ color: '#581C87' }}>👨‍👩‍👧 Family Co-Play Memory Quest</h3>
-                  <span style={{ background: '#7E22CE', color: '#FFF', padding: '4px 10px', borderRadius: 12, fontSize: 13, fontWeight: 'bold' }}>
-                    Active
-                  </span>
-                </div>
-                <p style={{ marginTop: 8, color: '#3B0764', fontWeight: 600 }}>
-                  Quest: "The Story of the Ancestral Madurai Journey"
-                </p>
-                <div style={{ marginTop: 8, fontSize: 14, color: '#4C1D95' }}>
-                  <p>• <strong>Kamala (Chief Storyteller):</strong> Recalls the morning temple bells</p>
-                  <p>• <strong>Rahul (Chronicler):</strong> Uploading photo from 1982 album</p>
+                <h3>🌱 Memory Garden Growth</h3>
+                <p className="text-muted mt-sm">Her garden has grown this week!</p>
+                <div style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--color-primary-bg)', borderRadius: 'var(--radius-md)' }}>
+                  <span style={{ fontSize: '32px' }}>🌺</span>
+                  <div style={{ fontWeight: 600, marginTop: 'var(--space-sm)' }}>New Jasmine unlocked</div>
+                  <div style={{ color: 'var(--color-primary-dark)', fontSize: 'var(--font-size-sm)' }}>From Story Detective activity</div>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {/* ─── LIFE-STORY MEMORY THEATRE ─────────────────────────────────────── */}
@@ -831,36 +839,6 @@ export default function App() {
         title={isListening ? 'Stop listening' : 'Tap to speak'}>
         {isListening ? '⏹' : '🎙️'}
       </button>
-
-      {/* ─── Bottom Navigation ─────────────────────────────────────────────── */}
-      <nav className="bottom-nav">
-        <button className={`nav-item ${page === 'home' ? 'active' : ''}`} onClick={() => setPage('home')}>
-          <span className="nav-icon">🏠</span>
-          <span>Home</span>
-        </button>
-        <button className={`nav-item ${page === 'companion' ? 'active' : ''}`} onClick={() => setPage('companion')}>
-          <span className="nav-icon">💬</span>
-          <span>Chat</span>
-        </button>
-        <button className={`nav-item ${page === 'games' ? 'active' : ''}`} onClick={() => setPage('games')}>
-          <span className="nav-icon">🧩</span>
-          <span>Games</span>
-        </button>
-        <button className={`nav-item ${page === 'health' ? 'active' : ''}`} onClick={() => setPage('health')}>
-          <span className="nav-icon">💊</span>
-          <span>Health</span>
-        </button>
-        {user?.role === 'CAREGIVER' && (
-          <button className={`nav-item ${page === 'dashboard' ? 'active' : ''}`} onClick={() => setPage('dashboard')}>
-            <span className="nav-icon">📊</span>
-            <span>Dashboard</span>
-          </button>
-        )}
-        <button className={`nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => setPage('settings')}>
-          <span className="nav-icon">⚙️</span>
-          <span>Settings</span>
-        </button>
-      </nav>
-    </div>
+    </AppShell>
   );
 }
