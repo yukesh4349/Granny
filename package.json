@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:web": "npm run web --workspace=@elderly-ai/mobile",
+    "dev:web": "npm run dev --workspace=@elderly-ai/web",
     "dev:mobile": "npm run start --workspace=@elderly-ai/mobile",
     "dev:backend": "npm run start:dev --workspace=backend",
     "build": "npm run build --workspaces --if-present",

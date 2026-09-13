@@ -4,13 +4,13 @@
    ============================================================================ */
 
 /* ─── Google Fonts ─────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 /* ─── CSS Custom Properties (Design Tokens) ────────────────────────────────── */
 :root {
   /* Typography */
-  --font-primary: 'Outfit', 'Inter', system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  --font-primary: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-size-base: 20px;
   --font-size-lg: 24px;
   --font-size-xl: 30px;
@@ -18,28 +18,28 @@
   --font-size-3xl: 48px;
   --font-size-sm: 16px;
 
-  /* Colors — Warm, high-contrast elderly-friendly palette */
-  --color-bg: #FFF8F0;
-  --color-bg-card: #FFFFFF;
-  --color-bg-dark: #1A1A2E;
-  --color-text: #1A1A2E;
-  --color-text-secondary: #4A4A6A;
-  --color-text-muted: #7A7A9A;
+  /* Colors — Warm, high-contrast elderly-friendly palette (Redesign) */
+  --color-bg: #f5fbf6; /* surface */
+  --color-bg-card: #ffffff; /* surface-container-lowest */
+  --color-bg-dark: #dee4df; /* surface-container-highest */
+  --color-text: #171d1a; /* on-surface */
+  --color-text-secondary: #404942; /* on-surface-variant */
+  --color-text-muted: #707972; /* outline */
 
-  /* Primary: Warm coral/orange — inviting & gentle */
-  --color-primary: #E8734A;
-  --color-primary-light: #FF9A76;
-  --color-primary-dark: #C85A30;
-  --color-primary-bg: #FFF0E8;
+  /* Primary: Sage Green — inviting & gentle */
+  --color-primary: #3b7a57; /* primary-container */
+  --color-primary-light: #93d5ac; /* inverse-primary */
+  --color-primary-dark: #206140; /* primary */
+  --color-primary-bg: #eff5f0; /* surface-container-low */
 
-  /* Secondary: Soft teal — calming & trustworthy */
-  --color-secondary: #2BA3A0;
-  --color-secondary-light: #5EC4C0;
-  --color-secondary-dark: #1D7A78;
+  /* Secondary: Warm Terracotta — calming & trustworthy */
+  --color-secondary: #fc9761; /* secondary-container */
+  --color-secondary-light: #ffdbcb; /* secondary-fixed */
+  --color-secondary-dark: #974818; /* secondary */
 
-  /* Accent: Warm gold — for highlights */
-  --color-accent: #F4A836;
-  --color-accent-light: #FFD07A;
+  /* Accent: Soft Sky Blue — for highlights */
+  --color-accent: #1e70c0; /* tertiary-container */
+  --color-accent-light: #d4e3ff; /* tertiary-fixed */
 
   /* Status colors */
   --color-success: #4CAF50;
@@ -107,6 +107,12 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 1360px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 /* ─── Typography ───────────────────────────────────────────────────────────── */
@@ -356,15 +362,8 @@ a:hover { color: var(--color-primary-dark); }
 }
 
 .mic-button.listening {
-  background: linear-gradient(135deg, #E53935, #B71C1C);
-  box-shadow: 0 0 0 10px rgba(229, 57, 53, 0.25), 0 8px 32px rgba(229, 57, 53, 0.6);
+  background: linear-gradient(135deg, var(--color-danger), #C62828);
   animation: pulse-active 1s ease-in-out infinite;
-}
-
-.mic-button.speaking {
-  background: linear-gradient(135deg, #43A047, #2E7D32);
-  box-shadow: 0 0 0 8px rgba(67, 160, 71, 0.25), 0 8px 32px rgba(67, 160, 71, 0.5);
-  animation: pulse-speaking 1.2s ease-in-out infinite;
 }
 
 @keyframes pulse-soft {
@@ -377,74 +376,13 @@ a:hover { color: var(--color-primary-dark); }
   50% { transform: scale(1.08); }
 }
 
-@keyframes pulse-speaking {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
-
-/* ─── Floating Voice HUD ─────────────────────────────────────────────────── */
-.voice-hud {
-  position: fixed;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  max-width: 90%;
-  width: 540px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  border: 2px solid var(--color-primary);
-  border-radius: var(--radius-xl);
-  padding: 14px 20px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-contrast="high"] .voice-hud {
-  background: #000;
-  border-color: #FFD700;
-  color: #FFF;
-}
-
-@keyframes slideDownFade {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -20px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-.voice-hud-indicator {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  overflow: hidden;
-}
-
-.voice-hud-text {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* ─── Waveform Animation ──────────────────────────────────────────────────── */
 .waveform {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 32px;
+  height: 40px;
 }
 
 .waveform-bar {
@@ -454,40 +392,14 @@ a:hover { color: var(--color-primary-dark); }
   animation: waveform-bounce 0.8s ease-in-out infinite;
 }
 
-.waveform.green .waveform-bar {
-  background: #43A047;
-}
-
-.waveform-bar:nth-child(2) { animation-delay: 0.15s; }
-.waveform-bar:nth-child(3) { animation-delay: 0.3s; }
-.waveform-bar:nth-child(4) { animation-delay: 0.45s; }
-.waveform-bar:nth-child(5) { animation-delay: 0.6s; }
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.4s; }
 
 @keyframes waveform-bounce {
-  0%, 100% { height: 6px; }
-  50% { height: 26px; }
-}
-
-/* ─── Replay Button in Chat ───────────────────────────────────────────────── */
-.replay-audio-btn {
-  background: var(--color-primary-bg);
-  border: 1px solid var(--color-primary);
-  color: var(--color-primary);
-  border-radius: var(--radius-full);
-  padding: 4px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  transition: all var(--transition-fast);
-}
-
-.replay-audio-btn:hover {
-  background: var(--color-primary);
-  color: white;
+  0%, 100% { height: 8px; }
+  50% { height: 32px; }
 }
 
 /* ─── Game World Map ───────────────────────────────────────────────────────── */
@@ -574,26 +486,44 @@ a:hover { color: var(--color-primary-dark); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Emergency Button ─────────────────────────────────────────────────────── */
+/* ─── Emergency Button (Fallback) ──────────────────────────────────────────── */
 .emergency-btn {
-  position: fixed;
-  top: var(--space-lg);
-  right: var(--space-lg);
-  min-height: var(--touch-min);
-  padding: var(--space-sm) var(--space-lg);
-  background: var(--color-danger);
-  color: white;
-  border: none;
-  border-radius: var(--radius-full);
-  font-family: var(--font-primary);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
+  display: none; /* Embedded directly into AppShell header */
+}
+
+/* ─── Picture-Based Cognitive Game Cards ───────────────────────────────────── */
+.picture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-lg);
+  margin: var(--space-lg) 0;
+}
+
+.picture-card {
+  background: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transition: all var(--transition-normal);
   cursor: pointer;
-  z-index: 101;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-sm);
-  box-shadow: 0 4px 16px rgba(229, 57, 53, 0.3);
+  gap: 8px;
+}
+
+.picture-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(59, 122, 87, 0.15);
+}
+
+.picture-card.active-question {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  box-shadow: 0 0 0 3px rgba(59, 122, 87, 0.2);
 }
 
 /* ─── Reminder Card ────────────────────────────────────────────────────────── */

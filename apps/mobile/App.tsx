@@ -12,15 +12,24 @@ import {
   StatusBar,
 } from 'react-native';
 import { THEME } from './src/constants/theme';
+import AuthScreen from './src/screens/Auth/AuthScreen';
 import HomeScreen from './src/screens/Home/HomeScreen';
 import CompanionScreen from './src/screens/Companion/CompanionScreen';
 import FlagshipGame from './src/screens/Games/FlagshipGame';
 import RemindersScreen from './src/screens/Health/RemindersScreen';
 import CaregiverScreen from './src/screens/Family/CaregiverScreen';
 
+interface MobileUser {
+  id: string;
+  name: string;
+  role: 'ELDER' | 'CAREGIVER';
+  language: string;
+}
+
 type Tab = 'home' | 'companion' | 'health' | 'caregiver';
 
 export default function App() {
+  const [user, setUser] = useState<MobileUser | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [inGame, setInGame] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
@@ -35,13 +44,32 @@ export default function App() {
     );
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    setActiveTab('home');
+    setInGame(false);
+  };
+
+  if (!user) {
+    return (
+      <AuthScreen
+        onLoginSuccess={(authUser) => setUser(authUser)}
+        highContrast={highContrast}
+        onToggleContrast={() => setHighContrast(h => !h)}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
       <StatusBar barStyle={highContrast ? 'light-content' : 'dark-content'} />
 
       {/* Top App Bar */}
       <View style={[styles.appBar, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-        <Text style={[styles.logo, { color: colors.textPrimary }]}>👵 Granny</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={[styles.logo, { color: colors.textPrimary }]}>👵 Granny</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>({user.name})</Text>
+        </View>
         <View style={styles.topActions}>
           <TouchableOpacity
             style={[styles.contrastBtn, { backgroundColor: colors.primaryLight }]}
@@ -49,6 +77,14 @@ export default function App() {
           >
             <Text style={[styles.contrastBtnText, { color: colors.primary }]}>
               {highContrast ? 'Normal' : 'High Contrast'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.contrastBtn, { backgroundColor: '#FEE2E2' }]}
+            onPress={handleLogout}
+          >
+            <Text style={[styles.contrastBtnText, { color: '#DC2626' }]}>
+              Exit
             </Text>
           </TouchableOpacity>
         </View>
