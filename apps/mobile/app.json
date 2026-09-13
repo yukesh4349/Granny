@@ -24,9 +24,6 @@
       }
     },
     "scheme": "granny",
-    "plugins": [
-      "expo-router"
-    ],
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
