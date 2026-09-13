@@ -9,14 +9,16 @@
 /* ─── CSS Custom Properties (Design Tokens) ────────────────────────────────── */
 :root {
   /* Typography */
-  --font-primary: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-size-base: 20px;
-  --font-size-lg: 24px;
-  --font-size-xl: 30px;
-  --font-size-2xl: 36px;
-  --font-size-3xl: 48px;
-  --font-size-sm: 16px;
+  --font-primary: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-md: 18px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 30px;
+  --font-size-3xl: 38px;
 
   /* Colors — Warm, high-contrast elderly-friendly palette (Redesign) */
   --color-bg: #f5fbf6; /* surface */
@@ -259,21 +261,23 @@ a:hover { color: var(--color-primary-dark); }
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 var(--space-lg);
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .page {
   min-height: 100vh;
-  padding-bottom: 100px; /* Space for bottom nav */
+  padding-bottom: 80px;
 }
 
 .page-header {
-  padding: var(--space-xl) 0;
-  text-align: center;
+  padding: 0 0 var(--space-md) 0;
+  margin-bottom: var(--space-lg);
+  text-align: left;
 }
 
 .page-content {
-  padding: var(--space-lg) 0;
+  padding: var(--space-md) 0;
 }
 
 /* Single-column layout for elderly (non-negotiable per blueprint) */
