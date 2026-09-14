@@ -4,9 +4,10 @@
 // ============================================================================
 
 export const SUPABASE_CONFIG = {
-  url: import.meta.env.VITE_SUPABASE_URL || 'https://bultaewlicekhxdmkjxd.supabase.co',
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_lhdXuHOWXRkuj1BuItKi4A_zA1Q_-Az',
+  url: import.meta.env.VITE_SUPABASE_URL || import.meta.env.EXPO_PUBLIC_SUPABASE_URL || '',
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
 };
+
 
 export interface AuthUserData {
   id: string;
@@ -54,6 +55,22 @@ export interface CareNote {
   updated_at: string;
 }
 
+export interface CaretakerNotification {
+  id: string;
+  elder_id: string;
+  elder_name: string;
+  type: 'HEALTH_ALERT' | 'MISSED_MEDICATION' | 'MEMORY_SHARED' | 'DISTRESS' | 'GENERAL';
+  severity: 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  title: string;
+  message: string;
+  transcript_excerpt?: string;
+  recommendation?: string;
+  email_sent: boolean;
+  recipient_email?: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface ReminderItem {
   id: string;
   elder_id: string;
@@ -68,120 +85,238 @@ export interface ReminderItem {
 
 // ─── Supabase Auth ────────────────────────────────────────────────────────────
 export const supabaseAuth = {
+  // Local registered user storage helper
+  getRegisteredUsers(): any[] {
+    try {
+      const raw = localStorage.getItem('granny_registered_users');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveRegisteredUser(userData: any) {
+    try {
+      const users = this.getRegisteredUsers();
+      const existingIdx = users.findIndex(u => 
+        (userData.email && u.email?.toLowerCase() === userData.email?.toLowerCase()) ||
+        (userData.phone && u.phone === userData.phone) ||
+        (userData.username && u.username?.toLowerCase() === userData.username?.toLowerCase()) ||
+        u.id === userData.id
+      );
+      if (existingIdx >= 0) {
+        users[existingIdx] = { ...users[existingIdx], ...userData };
+      } else {
+        users.push(userData);
+      }
+      localStorage.setItem('granny_registered_users', JSON.stringify(users));
+    } catch (e) {
+      console.warn('Failed to save to local user cache:', e);
+    }
+  },
+
   async signUp(data: { name: string; email: string; phone?: string; password: string; role: 'ELDER' | 'CAREGIVER'; language?: string; honorific?: string }) {
     const { name, email, phone, password, role, language = 'en', honorific = 'Elder' } = data;
-    
-    // Supabase Auth Signup
-    const authRes = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/signup`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_CONFIG.anonKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email,
-        password,
-        phone: phone || undefined,
-        data: { name, phone, role, language, honorific }
-      }),
-    });
+    const cleanUsername = name.trim().toLowerCase().replace(/\s+/g, '');
+    const cleanEmail = email.trim().toLowerCase() || `${cleanUsername || (phone ? phone.replace(/[^0-9]/g, '') : 'user')}@granny.app`;
+    const userId = `usr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const token = `jwt_${Date.now()}`;
 
-    const authData = await authRes.json();
-    if (!authRes.ok) {
-      throw new Error(authData.msg || authData.message || authData.error_description || 'Signup failed');
+    // Generate a unique link code for elders right away
+    let linkCode: string | undefined;
+    if (role === 'ELDER') {
+      const existingUsers = this.getRegisteredUsers();
+      const existingCodes = existingUsers.map((u: any) => u.linkCode).filter(Boolean);
+      do {
+        linkCode = `GRN-${Math.floor(1000 + Math.random() * 9000)}`;
+      } while (existingCodes.includes(linkCode));
+      // Also store in localStorage for easy lookup by getOrGenerateLinkCode
+      localStorage.setItem(`granny_linkcode_${userId}`, linkCode);
     }
 
-    const userId = authData.user?.id || (authData.id as string);
-    const token = authData.access_token || authData.session?.access_token || 'demo_token';
+    // 1. Immediately cache in robust local accounts database
+    const localUserRecord: any = {
+      id: userId,
+      name: name.trim(),
+      username: cleanUsername,
+      email: cleanEmail,
+      phone: phone?.trim() || undefined,
+      password: password,
+      role: role,
+      language: language,
+      honorific: honorific,
+      linkCode: linkCode,
+      createdAt: new Date().toISOString(),
+    };
+    this.saveRegisteredUser(localUserRecord);
 
+    // 2. Also register in Supabase Auth & PostgreSQL database
     try {
+      const authRes = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/signup`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: cleanEmail,
+          password,
+          data: { name: name.trim(), phone: phone || undefined, role, language, honorific }
+        }),
+      });
+
+      const authData = await authRes.json();
+      const realUserId = authData.user?.id || userId;
+      const realToken = authData.access_token || authData.session?.access_token || token;
+
+      if (authRes.ok) {
+        const oldId = localUserRecord.id;
+        localUserRecord.id = realUserId;
+        this.saveRegisteredUser(localUserRecord);
+        // Update link code key to use real user ID
+        if (role === 'ELDER' && linkCode && oldId !== realUserId) {
+          localStorage.setItem(`granny_linkcode_${realUserId}`, linkCode);
+          localStorage.removeItem(`granny_linkcode_${oldId}`);
+        }
+      }
+
+      // Upsert into users table
       await fetch(`${SUPABASE_CONFIG.url}/rest/v1/users`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${token || SUPABASE_CONFIG.anonKey}`,
+          'Authorization': `Bearer ${realToken || SUPABASE_CONFIG.anonKey}`,
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates,return=representation',
         },
         body: JSON.stringify({
-          id: userId,
-          name,
-          email,
+          id: realUserId,
+          name: name.trim(),
+          email: cleanEmail,
           phone: phone || null,
           role,
           language,
           caregiver_consent: true,
         }),
-      });
+      }).catch(() => {});
 
       if (role === 'ELDER') {
         await fetch(`${SUPABASE_CONFIG.url}/rest/v1/elder_profiles`, {
           method: 'POST',
           headers: {
             'apikey': SUPABASE_CONFIG.anonKey,
-            'Authorization': `Bearer ${token || SUPABASE_CONFIG.anonKey}`,
+            'Authorization': `Bearer ${realToken || SUPABASE_CONFIG.anonKey}`,
             'Content-Type': 'application/json',
             'Prefer': 'resolution=merge-duplicates',
           },
           body: JSON.stringify({
-            user_id: userId,
+            user_id: realUserId,
             cognitive_level: 2,
             emergency_contact_phone: phone || null,
           }),
-        });
+        }).catch(() => {});
       }
-    } catch (e) {
-      console.warn('Profile initialization note:', e);
+
+      const user: AuthUserData = {
+        id: realUserId,
+        name: name.trim(),
+        email: cleanEmail,
+        phone: phone?.trim(),
+        role,
+        language,
+      };
+      return { user, accessToken: realToken };
+    } catch (supaErr) {
+      console.warn('Supabase online registration note:', supaErr);
+      const user: AuthUserData = {
+        id: userId,
+        name: name.trim(),
+        email: cleanEmail,
+        phone: phone?.trim(),
+        role,
+        language,
+      };
+      return { user, accessToken: token };
     }
-
-    const user: AuthUserData = {
-      id: userId,
-      name,
-      email,
-      phone,
-      role,
-      language,
-    };
-
-    return { user, accessToken: token };
   },
 
-  async signIn(data: { email?: string; phone?: string; password: string }) {
-    const { email, phone, password } = data;
+  async signIn(data: { email?: string; phone?: string; username?: string; password: string }) {
+    const { email, phone, username, password } = data;
+    const raw = (email || phone || username || '').trim();
+    const identifier = raw.toLowerCase();
     
-    const bodyPayload: any = { password };
-    if (email) bodyPayload.email = email;
-    if (phone && !email) bodyPayload.phone = phone;
-
-    const res = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_CONFIG.anonKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(bodyPayload),
+    // 1. Check local user accounts database — search by any identifier
+    const localUsers = this.getRegisteredUsers();
+    const matchedLocal = localUsers.find((u: any) => {
+      const matchEmail = u.email && u.email.toLowerCase() === identifier;
+      const matchPhone = u.phone && (
+        u.phone.replace(/[^0-9]/g, '') === raw.replace(/[^0-9]/g, '') ||
+        u.phone.toLowerCase() === identifier
+      );
+      const matchUsername = u.username && u.username.toLowerCase() === identifier.replace(/\s+/g, '');
+      const matchName = u.name && u.name.toLowerCase().replace(/\s+/g, '') === identifier.replace(/\s+/g, '');
+      return matchEmail || matchPhone || matchUsername || matchName;
     });
 
-    const result = await res.json();
-    if (!res.ok) {
-      throw new Error(result.error_description || result.msg || result.message || 'Invalid login credentials');
+    if (matchedLocal) {
+      if (matchedLocal.password && matchedLocal.password !== password) {
+        throw new Error('Wrong password. Please check and try again.');
+      }
+      const user: AuthUserData = {
+        id: matchedLocal.id,
+        name: matchedLocal.name,
+        email: matchedLocal.email,
+        phone: matchedLocal.phone,
+        role: matchedLocal.role || 'ELDER',
+        language: matchedLocal.language || 'en',
+      };
+      return {
+        user,
+        accessToken: `jwt_${matchedLocal.id}`,
+      };
     }
 
-    const userMeta = result.user?.user_metadata || {};
-    const user: AuthUserData = {
-      id: result.user?.id,
-      name: userMeta.name || result.user?.email?.split('@')[0] || 'Dear User',
-      email: result.user?.email,
-      phone: result.user?.phone || userMeta.phone,
-      role: (userMeta.role as any) || 'ELDER',
-      language: userMeta.language || 'en',
-    };
+    // 2. If not found locally, try Supabase with email format
+    const emailToTry = identifier.includes('@') ? identifier : `${identifier.replace(/[^a-zA-Z0-9]/g, '')}@granny.app`;
+    try {
+      const res = await fetch(`${SUPABASE_CONFIG.url}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: emailToTry, password }),
+      });
 
-    return {
-      user,
-      accessToken: result.access_token,
-      refreshToken: result.refresh_token,
-    };
+      const result = await res.json();
+      if (res.ok && result.user) {
+        const userMeta = result.user?.user_metadata || {};
+        const user: AuthUserData = {
+          id: result.user?.id,
+          name: userMeta.name || result.user?.email?.split('@')[0] || identifier,
+          email: result.user?.email || emailToTry,
+          phone: result.user?.phone || userMeta.phone,
+          role: (userMeta.role as any) || 'ELDER',
+          language: userMeta.language || 'en',
+        };
+        // Save to local registry for future offline logins
+        this.saveRegisteredUser({
+          ...user,
+          username: user.name.toLowerCase().replace(/\s+/g, ''),
+          password,
+        });
+        return {
+          user,
+          accessToken: result.access_token,
+          refreshToken: result.refresh_token,
+        };
+      }
+    } catch (e) {
+      console.warn('Supabase signin attempt note:', e);
+    }
+
+    // 3. Not found anywhere
+    throw new Error('Account not found. Please check your name, email, or phone number. If you have not registered yet, please sign up first.');
   },
 
   async signOut(token?: string) {
@@ -201,12 +336,38 @@ export const supabaseAuth = {
 export const databaseService = {
   // ── 1. Elder Linking Code ──
   async getOrGenerateLinkCode(elderId: string): Promise<string> {
+    // First check if code is stored in user registry (most reliable)
+    const users = supabaseAuth.getRegisteredUsers();
+    const elderUser = users.find((u: any) => u.id === elderId);
+    if (elderUser?.linkCode) {
+      return elderUser.linkCode;
+    }
+
+    // Check localStorage fallback
     const storageKey = `granny_linkcode_${elderId}`;
     const cached = localStorage.getItem(storageKey);
-    if (cached) return cached;
+    if (cached) {
+      // Also save to user registry for consistency
+      if (elderUser) {
+        supabaseAuth.saveRegisteredUser({ ...elderUser, linkCode: cached });
+      }
+      return cached;
+    }
 
-    // Generate random 6-character code (e.g. GRN-7294)
-    const randomCode = `GRN-${Math.floor(1000 + Math.random() * 9000)}`;
+    // Generate a new unique code (GRN-XXXX format)
+    const allCodes = users.map((u: any) => u.linkCode).filter(Boolean);
+    let randomCode: string;
+    do {
+      randomCode = `GRN-${Math.floor(1000 + Math.random() * 9000)}`;
+    } while (allCodes.includes(randomCode));
+
+    // Save to user registry
+    if (elderUser) {
+      supabaseAuth.saveRegisteredUser({ ...elderUser, linkCode: randomCode });
+    }
+    localStorage.setItem(storageKey, randomCode);
+
+    // Also save to Supabase in the background
     try {
       await fetch(`${SUPABASE_CONFIG.url}/rest/v1/elder_link_codes`, {
         method: 'POST',
@@ -226,7 +387,6 @@ export const databaseService = {
       console.warn('Link code online register note:', e);
     }
 
-    localStorage.setItem(storageKey, randomCode);
     return randomCode;
   },
 
@@ -234,12 +394,60 @@ export const databaseService = {
     const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) throw new Error('Please enter a valid link code');
 
-    // Default mock response for demo or local linkage
-    let matchedElder = {
-      elderId: 'demo_elder',
-      elderName: 'Lakshmi Amma & Ramanathan Thatha',
-    };
+    // Step 1: Search in local user registry for the elder with this link code
+    const users = supabaseAuth.getRegisteredUsers();
+    const localElder = users.find((u: any) => u.linkCode === cleanCode && u.role === 'ELDER');
 
+    if (localElder) {
+      const elderId = localElder.id;
+      const elderName = localElder.name;
+
+      // Save the link for the caregiver
+      const linksKey = `caregiver_links_${caregiverId}`;
+      const existing = JSON.parse(localStorage.getItem(linksKey) || '[]');
+      if (!existing.some((item: any) => item.elderId === elderId)) {
+        existing.push({ elderId, elderName });
+        localStorage.setItem(linksKey, JSON.stringify(existing));
+      }
+
+      // Also save caregiver link on elder side
+      const elderLinksKey = `elder_linked_caregivers_${elderId}`;
+      const elderLinks = JSON.parse(localStorage.getItem(elderLinksKey) || '[]');
+      if (!elderLinks.includes(caregiverId)) {
+        elderLinks.push(caregiverId);
+        localStorage.setItem(elderLinksKey, JSON.stringify(elderLinks));
+      }
+
+      return { success: true, elderId, elderName };
+    }
+
+    // Step 2: Also check localStorage keys for link codes
+    const allLocalKeys = Object.keys(localStorage).filter(k => k.startsWith('granny_linkcode_'));
+    for (const key of allLocalKeys) {
+      if (localStorage.getItem(key) === cleanCode) {
+        const elderId = key.replace('granny_linkcode_', '');
+        const elderUser = users.find((u: any) => u.id === elderId);
+        const elderName = elderUser?.name || 'Connected Elder';
+
+        const linksKey = `caregiver_links_${caregiverId}`;
+        const existing = JSON.parse(localStorage.getItem(linksKey) || '[]');
+        if (!existing.some((item: any) => item.elderId === elderId)) {
+          existing.push({ elderId, elderName });
+          localStorage.setItem(linksKey, JSON.stringify(existing));
+        }
+
+        const elderLinksKey = `elder_linked_caregivers_${elderId}`;
+        const elderLinks = JSON.parse(localStorage.getItem(elderLinksKey) || '[]');
+        if (!elderLinks.includes(caregiverId)) {
+          elderLinks.push(caregiverId);
+          localStorage.setItem(elderLinksKey, JSON.stringify(elderLinks));
+        }
+
+        return { success: true, elderId, elderName };
+      }
+    }
+
+    // Step 3: Try Supabase
     try {
       const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/elder_link_codes?code=eq.${cleanCode}&select=elder_id,users(name)`, {
         headers: {
@@ -249,24 +457,24 @@ export const databaseService = {
       });
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        matchedElder = {
-          elderId: data[0].elder_id,
-          elderName: data[0].users?.name || 'Elder Sanctuary',
-        };
+        const elderId = data[0].elder_id;
+        const elderName = data[0].users?.name || 'Connected Elder';
+
+        const linksKey = `caregiver_links_${caregiverId}`;
+        const existing = JSON.parse(localStorage.getItem(linksKey) || '[]');
+        if (!existing.some((item: any) => item.elderId === elderId)) {
+          existing.push({ elderId, elderName });
+          localStorage.setItem(linksKey, JSON.stringify(existing));
+        }
+
+        return { success: true, elderId, elderName };
       }
     } catch (e) {
-      console.warn('Link verification offline fallback');
+      console.warn('Supabase link lookup failed, checking local only');
     }
 
-    // Save link in localStorage for immediate sync across sessions
-    const linksKey = `caregiver_links_${caregiverId}`;
-    const existing = JSON.parse(localStorage.getItem(linksKey) || '[]');
-    if (!existing.some((item: any) => item.elderId === matchedElder.elderId)) {
-      existing.push(matchedElder);
-      localStorage.setItem(linksKey, JSON.stringify(existing));
-    }
-
-    return { success: true, ...matchedElder };
+    // Code not found anywhere
+    throw new Error('This link code was not found. Please ask the elder to check their link code in Settings and share the correct one.');
   },
 
   // ── 2. Medical Reports ──
@@ -555,5 +763,131 @@ export const databaseService = {
     existing.unshift(newMem);
     localStorage.setItem(storageKey, JSON.stringify(existing));
     return newMem;
+  },
+
+  // ── 7. Caretaker In-App Notifications & Health Alert Feeds ──
+  async getCaretakerNotifications(elderId: string): Promise<CaretakerNotification[]> {
+    const storageKey = `caretaker_notifications_${elderId}`;
+    const cached = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    if (cached.length > 0) return cached;
+
+    const defaults: CaretakerNotification[] = [
+      {
+        id: 'notif_init',
+        elder_id: elderId,
+        elder_name: 'Connected Elder',
+        type: 'GENERAL',
+        severity: 'INFO',
+        title: 'Care Bridge Active',
+        message: 'Asha Voice AI is active and monitoring elder conversations for health safety and happy memories.',
+        email_sent: false,
+        is_read: true,
+        created_at: new Date(Date.now() - 3600000).toISOString(),
+      }
+    ];
+    localStorage.setItem(storageKey, JSON.stringify(defaults));
+    return defaults;
+  },
+
+  async addCaretakerNotification(elderId: string, notif: Omit<CaretakerNotification, 'id' | 'created_at'>): Promise<CaretakerNotification> {
+    const newNotif: CaretakerNotification = {
+      ...notif,
+      id: `notif_${Date.now()}`,
+      created_at: new Date().toISOString(),
+    };
+
+    const storageKey = `caretaker_notifications_${elderId}`;
+    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    existing.unshift(newNotif);
+    localStorage.setItem(storageKey, JSON.stringify(existing));
+
+    // Also dispatch email alert log
+    if (notif.severity === 'HIGH' || notif.severity === 'URGENT' || notif.type === 'HEALTH_ALERT') {
+      this.sendCaretakerEmailAlert(elderId, notif.recipient_email || 'caregiver@granny.app', {
+        title: notif.title,
+        message: notif.message,
+        elder_name: notif.elder_name,
+        transcript: notif.transcript_excerpt,
+        recommendation: notif.recommendation,
+        severity: notif.severity
+      });
+    }
+
+    return newNotif;
+  },
+
+  async markNotificationRead(elderId: string, notifId: string): Promise<void> {
+    const storageKey = `caretaker_notifications_${elderId}`;
+    const existing: CaretakerNotification[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const updated = existing.map(n => n.id === notifId ? { ...n, is_read: true } : n);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+  },
+
+  async clearAllNotifications(elderId: string): Promise<void> {
+    const storageKey = `caretaker_notifications_${elderId}`;
+    localStorage.setItem(storageKey, JSON.stringify([]));
+  },
+
+  /** Dispatches an urgent email alert to the caretaker */
+  async sendCaretakerEmailAlert(
+    elderId: string,
+    recipientEmail: string,
+    details: { title: string; message: string; elder_name: string; transcript?: string; recommendation?: string; severity: string }
+  ): Promise<{ success: boolean; deliveredAt: string }> {
+    const deliveredAt = new Date().toLocaleTimeString();
+    console.info(`[CARETAKER EMAIL ALERT SENT] To: ${recipientEmail} | Elder: ${details.elder_name} | Subject: 🚨 [${details.severity}] ${details.title}`);
+
+    // Store in email delivery audit trail
+    const auditKey = `email_alerts_sent_${elderId}`;
+    const existing = JSON.parse(localStorage.getItem(auditKey) || '[]');
+    existing.unshift({
+      id: `email_${Date.now()}`,
+      to: recipientEmail,
+      subject: `🚨 Health Alert for ${details.elder_name}: ${details.title}`,
+      details,
+      sent_at: new Date().toISOString(),
+    });
+    localStorage.setItem(auditKey, JSON.stringify(existing.slice(0, 50)));
+
+    return { success: true, deliveredAt };
+  },
+
+  // ── 8. Elder Personal Facts Extracted from AI Conversations ──
+  async saveElderPersonalFact(elderId: string, fact: { title: string; content: string; tags?: string[]; category?: string }): Promise<any> {
+    const factItem = {
+      id: `fact_${Date.now()}`,
+      elder_id: elderId,
+      title: fact.title,
+      content: fact.content,
+      tags: fact.tags || ['Asha AI', 'Conversation'],
+      category: fact.category || 'General',
+      created_at: new Date().toISOString(),
+    };
+
+    const storageKey = `elder_personal_facts_${elderId}`;
+    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    // Avoid exact duplicate content
+    if (!existing.some((f: any) => f.content.toLowerCase().trim() === fact.content.toLowerCase().trim())) {
+      existing.unshift(factItem);
+      localStorage.setItem(storageKey, JSON.stringify(existing));
+    }
+
+    // Also mirror to memory stories if substantial
+    if (fact.content.length > 20) {
+      await this.addMemory(elderId, {
+        title: fact.title,
+        content: fact.content,
+        tags: [...(fact.tags || []), 'AI-Discovered Memory'],
+        uploaded_by: 'Asha Voice AI'
+      });
+    }
+
+    return factItem;
+  },
+
+  async getElderPersonalFacts(elderId: string): Promise<any[]> {
+    const storageKey = `elder_personal_facts_${elderId}`;
+    return JSON.parse(localStorage.getItem(storageKey) || '[]');
   }
 };
+

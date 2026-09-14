@@ -28,7 +28,7 @@ export default function FlagshipGame({ onBack, highContrast }: Props) {
   const colors = highContrast ? THEME.highContrastColors : THEME.colors;
 
   const [phase, setPhase] = useState<'memorize' | 'recall' | 'result'>('memorize');
-  const [countdown, setCountdown] = useState(6);
+  const [countdown, setCountdown] = useState(20);
   const [targetItem, setTargetItem] = useState<PlacedItem>(
     { name: 'Reading Glasses', emoji: '👓', room: 'Living Room Table' }
   );
@@ -58,7 +58,7 @@ export default function FlagshipGame({ onBack, highContrast }: Props) {
     setTargetItem({ ...randomItem, room: randomRoom });
     setSelectedRoom(null);
     setIsCorrect(null);
-    setCountdown(6);
+    setCountdown(20);
     setPhase('memorize');
   };
 

@@ -76,8 +76,29 @@ export function clearAuth() {
 }
 
 /** Save preferences to localStorage */
-export function persistPreferences(fontSize: number, highContrast: boolean, language: string) {
-  localStorage.setItem('granny_fontsize', fontSize.toString());
-  localStorage.setItem('granny_contrast', highContrast.toString());
-  localStorage.setItem('granny_language', language);
+export function persistPreferences(
+  fontSizeOrOptions: number | { fontSize?: number; highContrast?: boolean; language?: string },
+  highContrast?: boolean,
+  language?: string
+) {
+  if (typeof fontSizeOrOptions === 'object') {
+    if (fontSizeOrOptions.fontSize !== undefined) {
+      localStorage.setItem('granny_fontsize', fontSizeOrOptions.fontSize.toString());
+    }
+    if (fontSizeOrOptions.highContrast !== undefined) {
+      localStorage.setItem('granny_contrast', fontSizeOrOptions.highContrast.toString());
+    }
+    if (fontSizeOrOptions.language !== undefined) {
+      localStorage.setItem('granny_language', fontSizeOrOptions.language);
+    }
+  } else {
+    localStorage.setItem('granny_fontsize', fontSizeOrOptions.toString());
+    if (highContrast !== undefined) {
+      localStorage.setItem('granny_contrast', highContrast.toString());
+    }
+    if (language !== undefined) {
+      localStorage.setItem('granny_language', language);
+    }
+  }
 }
+

@@ -59,7 +59,7 @@ export default function AppShell({
                   fontWeight: 800, fontSize: '12px', letterSpacing: '0.02em'
                 }}>
                   <span>👨‍👩‍👧</span>
-                  <span>{language === 'ta' ? 'பராமரிப்பாளர் தளம்' : 'Caretaker Portal'}</span>
+                  <span>{language === 'ta' ? 'பராமரிப்பாளர் பகுதி' : 'Caregiver Home'}</span>
                 </div>
               ) : (
                 <div style={{
@@ -69,7 +69,7 @@ export default function AppShell({
                   fontWeight: 800, fontSize: '12px', letterSpacing: '0.02em'
                 }}>
                   <span>👵👴</span>
-                  <span>{language === 'ta' ? 'முதியோர் சரணாலயம்' : 'Elder Sanctuary'}</span>
+                  <span>{language === 'ta' ? 'முதியோர் பகுதி' : 'Elder Home'}</span>
                 </div>
               )}
             </div>
@@ -119,7 +119,7 @@ export default function AppShell({
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isCaretaker ? '#7B1FA2' : '#2E7D32' }} />
             <span>
               {isCaretaker 
-                ? (language === 'ta' ? 'பராமரிப்பாளர்: ' : 'Caretaker: ') 
+                ? (language === 'ta' ? 'பராமரிப்பாளர்: ' : 'Caregiver: ') 
                 : (language === 'ta' ? 'முதியோர்: ' : 'Elder: ')}
               <strong>{user.name}</strong>
             </span>
@@ -144,36 +144,9 @@ export default function AppShell({
         overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px',
         boxSizing: 'border-box'
       }}>
-        {/* Sidebar Portal Banner Header */}
-        <div style={{
-          padding: '14px 16px', borderRadius: '14px',
-          background: isCaretaker 
-            ? 'linear-gradient(135deg, #6A1B9A 0%, #4A148C 100%)' 
-            : 'linear-gradient(135deg, #1B4332 0%, #081C15 100%)',
-          color: '#FFFFFF', marginBottom: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9, fontWeight: 800 }}>
-              {isCaretaker ? (language === 'ta' ? 'பராமரிப்பாளர் தளம்' : 'CARETAKER PORTAL') : (language === 'ta' ? 'முதியோர் சரணாலயம்' : 'ELDER SANCTUARY')}
-            </span>
-            <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.25)', fontWeight: 700 }}>
-              {isCaretaker ? 'PRO' : 'LIVE'}
-            </span>
-          </div>
-          <div style={{ fontSize: '15px', fontWeight: 800, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>{isCaretaker ? '👨‍👩‍👧' : '👵👴'}</span>
-            <span>{isCaretaker ? (language === 'ta' ? 'கண்காணிப்பு மையம்' : 'Caretaker Dashboard') : (language === 'ta' ? 'முதியோர் பகுதி' : 'Elder Space')}</span>
-          </div>
-          <div style={{ fontSize: '11px', opacity: 0.85, marginTop: '3px' }}>
-            {isCaretaker 
-              ? (language === 'ta' ? 'குடும்ப முதியோரை கவனித்தல்' : 'Managing Elder Care')
-              : (language === 'ta' ? 'அன்பான நினைவுகள் & அமைதி' : 'Daily Peace & Memories')}
-          </div>
-        </div>
-
         {!isCaretaker ? (
           <>
-            <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', padding: '4px 8px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.06em', padding: '8px 8px 4px 8px' }}>
               {t('nav_elder_spaces', language)}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -189,7 +162,7 @@ export default function AppShell({
           </>
         ) : (
           <>
-            <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#6A1B9A', letterSpacing: '0.06em', padding: '4px 8px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: '#6A1B9A', letterSpacing: '0.06em', padding: '8px 8px 4px 8px' }}>
               {t('nav_caretaker_insights', language)}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -216,31 +189,6 @@ export default function AppShell({
         boxSizing: 'border-box'
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-          
-          {/* Top Context Indicator Ribbon on every page */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 20px', borderRadius: '14px', marginBottom: '24px',
-            backgroundColor: isCaretaker ? '#EDE7F6' : '#E8F5E9',
-            border: isCaretaker ? '1.5px solid #D1C4E9' : '1.5px solid #C8E6C9',
-            boxSizing: 'border-box'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '20px' }}>{isCaretaker ? '🛡️' : '🌿'}</span>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 800, color: isCaretaker ? '#4A148C' : '#1B4332' }}>
-                  {isCaretaker 
-                    ? (language === 'ta' ? 'பராமரிப்பாளர் தளம்: குடும்ப முதியோருக்கான மேலாண்மை மற்றும் நேரலை கண்காணிப்பு' : 'Caretaker Portal: Actively Managing & Monitoring Elder Care')
-                    : (language === 'ta' ? 'முதியோர் சரணாலயம்: முதியோருக்கான அமைதியான அன்றாட தளம்' : 'Elder Sanctuary: Dedicated Daily Care Space')}
-                </div>
-              </div>
-            </div>
-
-            <span style={{ fontSize: '12px', fontWeight: 700, color: isCaretaker ? '#6A1B9A' : '#2D6A4F' }}>
-              {isCaretaker ? '● Live Telemetry & Alerts' : '● 1-Tap Assisted Mode'}
-            </span>
-          </div>
-
           {children}
         </div>
       </main>
