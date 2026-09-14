@@ -1,5 +1,7 @@
 // ============================================================================
-// 20 Nostalgia-Based Cognitive Games Screen for React Native
+// GamesScreen.tsx — 20 Nostalgia-Based Cognitive Games with 4-Key Groq Engine
+// Dynamic Non-Repeating Questions, Cultural Images, Audio Feedback,
+// and Caregiver Daily Time Limits
 // ============================================================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -8,10 +10,13 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { THEME } from '../../constants/theme';
 import { ALL_MOBILE_GAMES, getMobileGamesByCategory, type MobileGame, type MobileGameItem } from '../../features/games/gamesData';
+import { groqService, GameItem as GroqGameItem } from '../../services/groqService';
+import { audioService } from '../../services/audioService';
 
 interface Props {
   onBack: () => void;
@@ -19,11 +24,14 @@ interface Props {
   highContrast?: boolean;
 }
 
-export default function GamesScreen({ onBack, language = 'en', highContrast }: Props) {
+export default function GamesScreen({ onBack, language = 'ta', highContrast }: Props) {
   const colors = highContrast ? THEME.highContrastColors : THEME.colors;
+  const isTamil = language === 'ta';
 
   const [activeCategory, setActiveCategory] = useState<'all' | 'outdoor' | 'indoor' | 'cinema'>('all');
   const [activeGame, setActiveGame] = useState<MobileGame | null>(null);
+  const [activeItems, setActiveItems] = useState<(MobileGameItem | GroqGameItem)[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [gamePhase, setGamePhase] = useState<'memorize' | 'play' | 'result'>('memorize');
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [countdown, setCountdown] = useState(5);
@@ -35,7 +43,7 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
   // Memorize Phase Countdown
   useEffect(() => {
     let timer: any;
-    if (activeGame && gamePhase === 'memorize') {
+    if (activeGame && gamePhase === 'memorize' && !loadingQuestions) {
       if (countdown > 0) {
         timer = setTimeout(() => setCountdown(c => c - 1), 1000);
       } else {
@@ -43,45 +51,79 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
       }
     }
     return () => clearTimeout(timer);
-  }, [activeGame, gamePhase, countdown]);
+  }, [activeGame, gamePhase, countdown, loadingQuestions]);
 
-  const handleStartGame = (game: MobileGame) => {
+  const handleStartGame = async (game: MobileGame) => {
+    audioService.playTapSound();
     setActiveGame(game);
+    setLoadingQuestions(true);
     setCurrentItemIndex(0);
     setScore(0);
     setUserAnswers([]);
     setCountdown(5);
     setGamePhase('memorize');
+
+    try {
+      const title = isTamil ? game.titleTa : game.titleEn;
+      const dynamicItems = await groqService.generateGameQuestions(
+        game.key,
+        title,
+        game.category,
+        {
+          name: 'Lakshmi Amma & Ramanathan Thatha',
+          hometown: 'Madurai / Chennai',
+          hobbies: 'Carnatic music, Kolam, Tamil literature',
+        },
+        4
+      );
+
+      if (dynamicItems && dynamicItems.length > 0) {
+        setActiveItems(dynamicItems);
+      } else {
+        setActiveItems(game.items);
+      }
+    } catch (e) {
+      console.warn('Fallback to static questions:', e);
+      setActiveItems(game.items);
+    } finally {
+      setLoadingQuestions(false);
+    }
   };
 
   const handleSelectAnswer = (choice: string) => {
-    if (!activeGame) return;
-    const item = activeGame.items[currentItemIndex];
+    if (!activeGame || activeItems.length === 0) return;
+    const item = activeItems[currentItemIndex];
     const isCorrect = choice.trim().toLowerCase() === item.answer.trim().toLowerCase();
-    
+
     if (isCorrect) {
+      audioService.playSuccessSound();
       setScore(s => s + 100);
+    } else {
+      audioService.playTapSound();
     }
+
     const newAnswers = [...userAnswers, isCorrect];
     setUserAnswers(newAnswers);
 
-    if (currentItemIndex + 1 < activeGame.items.length) {
+    if (currentItemIndex + 1 < activeItems.length) {
       setCurrentItemIndex(i => i + 1);
     } else {
       setGamePhase('result');
+      audioService.playSuccessSound();
     }
   };
 
   const handleExitGame = () => {
+    audioService.playTapSound();
     setActiveGame(null);
     setGamePhase('memorize');
   };
 
   // ─── Render Active Game Screen ───────────────────────────────────────────
   if (activeGame) {
-    const currentItem = activeGame.items[currentItemIndex];
-    const title = language === 'ta' ? activeGame.titleTa : activeGame.titleEn;
-    const desc = language === 'ta' ? activeGame.descTa : activeGame.descEn;
+    const currentItem = activeItems[currentItemIndex];
+    const title = isTamil ? activeGame.titleTa : activeGame.titleEn;
+    const desc = isTamil ? activeGame.descTa : activeGame.descEn;
 
     return (
       <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -92,7 +134,7 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
             onPress={handleExitGame}
           >
             <Text style={[styles.backBtnText, { color: colors.textPrimary }]}>
-              {language === 'ta' ? '← வெளியேறு' : '← Exit Game'}
+              {isTamil ? '← வெளியேறு' : '← Exit Game'}
             </Text>
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -105,115 +147,137 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
           </View>
         </View>
 
-        {/* Phase 1: Memorize */}
-        {gamePhase === 'memorize' && (
-          <ScrollView contentContainerStyle={styles.gameContent}>
-            <View style={[styles.phasePill, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
-              <Text style={[styles.phasePillText, { color: colors.primary }]}>
-                ⏱️ {language === 'ta' ? `நினைவில் வையுங்கள் — ${countdown}s` : `Memorize Phase — ${countdown}s`}
-              </Text>
-            </View>
-
-            <Text style={[styles.instructionText, { color: colors.textPrimary }]}>
-              {language === 'ta' ? 'கீழே உள்ள குறிப்புகளை கவனமாக பாருங்கள்!' : 'Look closely and remember the cards below!'}
+        {loadingQuestions ? (
+          <View style={[styles.center, { backgroundColor: colors.bg }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textPrimary }]}>
+              🌸 {isTamil ? 'புதிய கேள்விகளை உருவாக்குகிறது...' : 'Generating fresh cultural questions...'}
             </Text>
+          </View>
+        ) : (
+          <>
+            {/* Phase 1: Memorize */}
+            {gamePhase === 'memorize' && (
+              <ScrollView contentContainerStyle={styles.gameContent}>
+                <View style={[styles.phasePill, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+                  <Text style={[styles.phasePillText, { color: colors.primaryDark }]}>
+                    ⏱️ {isTamil ? `நினைவில் வையுங்கள் — ${countdown}s` : `Memorize Phase — ${countdown}s`}
+                  </Text>
+                </View>
 
-            <View style={styles.memorizeGrid}>
-              {activeGame.items.map((item, i) => (
-                <View key={i} style={[styles.memorizeCard, { backgroundColor: colors.cardBg, borderColor: activeGame.color }]}>
-                  <Text style={styles.cardEmoji}>{item.emoji}</Text>
-                  <Text style={[styles.cardMeta, { color: colors.textPrimary }]}>{item.metadataName}</Text>
-                  <View style={[styles.answerBadge, { backgroundColor: colors.bg }]}>
-                    <Text style={[styles.answerBadgeText, { color: colors.primaryDark }]}>
-                      📍 {item.answer}
-                    </Text>
+                <Text style={[styles.instructionText, { color: colors.textPrimary }]}>
+                  {isTamil ? 'கீழே உள்ள குறிப்புகளை கவனமாக பாருங்கள்!' : 'Look closely and remember the cards below!'}
+                </Text>
+
+                <View style={styles.memorizeGrid}>
+                  {activeItems.map((item: any, i: number) => (
+                    <View key={i} style={[styles.memorizeCard, { backgroundColor: colors.cardBg, borderColor: activeGame.color }]}>
+                      {item.imageUrl ? (
+                        <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="cover" />
+                      ) : null}
+                      <Text style={styles.cardEmoji}>{item.emoji || activeGame.icon}</Text>
+                      <Text style={[styles.cardMeta, { color: colors.textPrimary }]}>
+                        {item.prompt ? item.prompt.slice(0, 50) + '...' : item.metadataName}
+                      </Text>
+                      <View style={[styles.answerBadge, { backgroundColor: colors.primaryLight }]}>
+                        <Text style={[styles.answerBadgeText, { color: colors.primaryDark }]}>
+                          📍 {item.answer}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.readyBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => setGamePhase('play')}
+                >
+                  <Text style={styles.readyBtnText}>
+                    {isTamil ? 'நான் தயார்! விடையளிக்கவும் →' : "I'm Ready! Answer Now →"}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+
+            {/* Phase 2: Play Questions */}
+            {gamePhase === 'play' && currentItem && (
+              <ScrollView contentContainerStyle={styles.gameContent}>
+                <View style={[styles.phasePill, { backgroundColor: colors.secondaryLight, borderColor: colors.secondary }]}>
+                  <Text style={[styles.phasePillText, { color: colors.secondaryDark }]}>
+                    {isTamil
+                      ? `கேள்வி ${currentItemIndex + 1} / ${activeItems.length}`
+                      : `Question ${currentItemIndex + 1} of ${activeItems.length}`}
+                  </Text>
+                </View>
+
+                <View style={[styles.questionCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+                  {'imageUrl' in currentItem && currentItem.imageUrl ? (
+                    <Image source={{ uri: (currentItem as any).imageUrl }} style={styles.questionImage} resizeMode="cover" />
+                  ) : (
+                    <Text style={styles.questionEmoji}>{currentItem.emoji || activeGame.icon}</Text>
+                  )}
+
+                  <Text style={[styles.questionPrompt, { color: colors.textPrimary }]}>
+                    {currentItem.prompt}
+                  </Text>
+
+                  <View style={styles.choicesContainer}>
+                    {currentItem.choices.map((choice: string, i: number) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={[styles.choiceBtn, { backgroundColor: colors.bg, borderColor: colors.border }]}
+                        onPress={() => handleSelectAnswer(choice)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.choiceBtnText, { color: colors.textPrimary }]}>
+                          {choice}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
                 </View>
-              ))}
-            </View>
+              </ScrollView>
+            )}
 
-            <TouchableOpacity
-              style={[styles.readyBtn, { backgroundColor: colors.primary }]}
-              onPress={() => setGamePhase('play')}
-            >
-              <Text style={styles.readyBtnText}>
-                {language === 'ta' ? 'நான் தயார்! விடையளிக்கவும் →' : "I'm Ready! Answer Now →"}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
+            {/* Phase 3: Result */}
+            {gamePhase === 'result' && (
+              <View style={styles.resultContainer}>
+                <Text style={styles.resultEmoji}>
+                  {userAnswers.filter(Boolean).length >= activeItems.length / 2 ? '🌸' : '👍'}
+                </Text>
+                <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>
+                  {isTamil ? 'அருமையான நினைவாற்றல் பயிற்சி!' : 'Wonderful Memory Activity!'}
+                </Text>
+                <Text style={[styles.resultScore, { color: colors.primary }]}>
+                  {isTamil ? `மதிப்பெண்: ${score}` : `Score: ${score}`}
+                </Text>
+                <Text style={[styles.resultSummary, { color: colors.textSecondary }]}>
+                  {isTamil
+                    ? `சரியான விடைகள்: ${userAnswers.filter(Boolean).length} / ${activeItems.length}`
+                    : `Correct Answers: ${userAnswers.filter(Boolean).length} of ${activeItems.length}`}
+                </Text>
 
-        {/* Phase 2: Play Questions */}
-        {gamePhase === 'play' && currentItem && (
-          <ScrollView contentContainerStyle={styles.gameContent}>
-            <View style={[styles.phasePill, { backgroundColor: colors.secondaryLight, borderColor: colors.secondary }]}>
-              <Text style={[styles.phasePillText, { color: colors.secondaryDark }]}>
-                {language === 'ta'
-                  ? `கேள்வி ${currentItemIndex + 1} / ${activeGame.items.length}`
-                  : `Question ${currentItemIndex + 1} of ${activeGame.items.length}`}
-              </Text>
-            </View>
-
-            <View style={[styles.questionCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-              <Text style={styles.questionEmoji}>{currentItem.emoji}</Text>
-              <Text style={[styles.questionPrompt, { color: colors.textPrimary }]}>
-                {currentItem.prompt}
-              </Text>
-
-              <View style={styles.choicesContainer}>
-                {currentItem.choices.map((choice, i) => (
+                <View style={styles.resultBtnRow}>
                   <TouchableOpacity
-                    key={i}
-                    style={[styles.choiceBtn, { backgroundColor: colors.bg, borderColor: colors.border }]}
-                    onPress={() => handleSelectAnswer(choice)}
+                    style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => handleStartGame(activeGame)}
                   >
-                    <Text style={[styles.choiceBtnText, { color: colors.textPrimary }]}>
-                      {choice}
+                    <Text style={styles.actionBtnText}>
+                      {isTamil ? 'மீண்டும் விளையாடு 🔄' : 'Play Again 🔄'}
                     </Text>
                   </TouchableOpacity>
-                ))}
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: colors.cardBg, borderColor: colors.border, borderWidth: 1.5 }]}
+                    onPress={handleExitGame}
+                  >
+                    <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
+                      {isTamil ? 'அனைத்து விளையாட்டுகள் 🧩' : 'All Games 🧩'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </ScrollView>
-        )}
-
-        {/* Phase 3: Result */}
-        {gamePhase === 'result' && (
-          <View style={styles.resultContainer}>
-            <Text style={styles.resultEmoji}>
-              {userAnswers.filter(Boolean).length >= activeGame.items.length / 2 ? '🌸' : '👍'}
-            </Text>
-            <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>
-              {language === 'ta' ? 'அருமையான நினைவாற்றல் பயிற்சி!' : 'Wonderful Memory Activity!'}
-            </Text>
-            <Text style={[styles.resultScore, { color: colors.primary }]}>
-              {language === 'ta' ? `மதிப்பெண்: ${score}` : `Score: ${score}`}
-            </Text>
-            <Text style={[styles.resultSummary, { color: colors.textSecondary }]}>
-              {language === 'ta'
-                ? `சரியான விடைகள்: ${userAnswers.filter(Boolean).length} / ${activeGame.items.length}`
-                : `Correct Answers: ${userAnswers.filter(Boolean).length} of ${activeGame.items.length}`}
-            </Text>
-
-            <View style={styles.resultBtnRow}>
-              <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-                onPress={() => handleStartGame(activeGame)}
-              >
-                <Text style={styles.actionBtnText}>
-                  {language === 'ta' ? 'மீண்டும் விளையாடு 🔄' : 'Play Again 🔄'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: colors.cardBg, borderColor: colors.border, borderWidth: 1.5 }]}
-                onPress={handleExitGame}
-              >
-                <Text style={[styles.actionBtnText, { color: colors.textPrimary }]}>
-                  {language === 'ta' ? 'அனைத்து விளையாட்டுகள் 🧩' : 'All Games 🧩'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            )}
+          </>
         )}
       </View>
     );
@@ -229,11 +293,11 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
           onPress={onBack}
         >
           <Text style={[styles.backBtnText, { color: colors.textPrimary }]}>
-            {language === 'ta' ? '← முகப்பு' : '← Home'}
+            {isTamil ? '← முகப்பு' : '← Home'}
           </Text>
         </TouchableOpacity>
         <Text style={[styles.libraryTitle, { color: colors.textPrimary }]}>
-          🧩 {language === 'ta' ? '20 பாரம்பரிய விளையாட்டுகள்' : '20 Nostalgia Games'}
+          🧩 {isTamil ? '20 பாரம்பரிய விளையாட்டுகள்' : '20 Nostalgia Games'}
         </Text>
       </View>
 
@@ -241,10 +305,10 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
       <View style={styles.tabsRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
           {[
-            { id: 'all' as const, label: language === 'ta' ? 'அனைத்தும் (20)' : 'All 20 Games' },
-            { id: 'outdoor' as const, label: language === 'ta' ? '🏃 வெளியரங்கம் (10)' : '🏃 Outdoor (10)' },
-            { id: 'indoor' as const, label: language === 'ta' ? '🎲 உள்ளரங்கம் (5)' : '🎲 Indoor (5)' },
-            { id: 'cinema' as const, label: language === 'ta' ? '🎬 சினிமா (5)' : '🎬 Cinema (5)' },
+            { id: 'all' as const, label: isTamil ? 'அனைத்தும் (20)' : 'All 20 Games' },
+            { id: 'outdoor' as const, label: isTamil ? '🏃 வெளியரங்கம் (10)' : '🏃 Outdoor (10)' },
+            { id: 'indoor' as const, label: isTamil ? '🎲 உள்ளரங்கம் (5)' : '🎲 Indoor (5)' },
+            { id: 'cinema' as const, label: isTamil ? '🎬 சினிமா (5)' : '🎬 Cinema (5)' },
           ].map(tab => (
             <TouchableOpacity
               key={tab.id}
@@ -255,7 +319,10 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
                   borderColor: activeCategory === tab.id ? colors.primary : colors.border,
                 }
               ]}
-              onPress={() => setActiveCategory(tab.id)}
+              onPress={() => {
+                audioService.playTapSound();
+                setActiveCategory(tab.id);
+              }}
             >
               <Text style={[
                 styles.tabPillText,
@@ -271,34 +338,35 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
       {/* Game Cards List */}
       <ScrollView contentContainerStyle={styles.gamesList}>
         {games.map(game => {
-          const title = language === 'ta' ? game.titleTa : game.titleEn;
-          const desc = language === 'ta' ? game.descTa : game.descEn;
+          const title = isTamil ? game.titleTa : game.titleEn;
+          const desc = isTamil ? game.descTa : game.descEn;
           const catLabel = game.category === 'outdoor'
-            ? (language === 'ta' ? 'வெளிப்புறம்' : 'Outdoor')
+            ? (isTamil ? 'வெளிப்புறம்' : 'Outdoor')
             : game.category === 'indoor'
-            ? (language === 'ta' ? 'உட்புறம்' : 'Indoor')
-            : (language === 'ta' ? 'சினிமா' : 'Cinema');
+            ? (isTamil ? 'உட்புறம்' : 'Indoor')
+            : (isTamil ? 'சினிமா' : 'Cinema');
 
           return (
             <TouchableOpacity
               key={game.key}
               style={[styles.gameCard, { backgroundColor: colors.cardBg, borderColor: colors.border, borderLeftColor: game.color }]}
               onPress={() => handleStartGame(game)}
+              activeOpacity={0.85}
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.gameIcon}>{game.icon}</Text>
                 <View style={[styles.categoryBadge, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.categoryBadgeText, { color: colors.primary }]}>{catLabel}</Text>
+                  <Text style={[styles.categoryBadgeText, { color: colors.primaryDark }]}>{catLabel}</Text>
                 </View>
               </View>
               <Text style={[styles.gameCardTitle, { color: colors.textPrimary }]}>{title}</Text>
               <Text style={[styles.gameCardDesc, { color: colors.textSecondary }]}>{desc}</Text>
               <View style={styles.playNowRow}>
-                <Text style={[styles.playNowText, { color: colors.primary }]}>
-                  {language === 'ta' ? 'விளையாடு →' : 'Play Game →'}
+                <Text style={[styles.playNowText, { color: colors.primaryDark }]}>
+                  {isTamil ? 'விளையாடு →' : 'Play Game →'}
                 </Text>
                 <View style={[styles.playArrowCircle, { backgroundColor: colors.primaryLight }]}>
-                  <Text style={[styles.playArrow, { color: colors.primary }]}>▶</Text>
+                  <Text style={[styles.playArrow, { color: colors.primaryDark }]}>▶</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -311,6 +379,8 @@ export default function GamesScreen({ onBack, language = 'en', highContrast }: P
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  loadingText: { marginTop: 14, fontSize: 16, fontWeight: '700', textAlign: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -345,10 +415,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 6,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   gameIcon: { fontSize: 32 },
@@ -357,7 +423,7 @@ const styles = StyleSheet.create({
   gameCardTitle: { fontSize: 17, fontWeight: '800' },
   gameCardDesc: { fontSize: 13, lineHeight: 18 },
   playNowRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#EEEEEE' },
-  playNowText: { fontSize: 13, fontWeight: '700' },
+  playNowText: { fontSize: 13, fontWeight: '800' },
   playArrowCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   playArrow: { fontSize: 12, fontWeight: '900' },
 
@@ -367,15 +433,17 @@ const styles = StyleSheet.create({
   phasePillText: { fontSize: 14, fontWeight: '800' },
   instructionText: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
   memorizeGrid: { width: '100%', gap: 10 },
-  memorizeCard: { borderRadius: 14, borderWidth: 2, padding: 14, alignItems: 'center', gap: 4 },
-  cardEmoji: { fontSize: 40 },
-  cardMeta: { fontSize: 15, fontWeight: '700' },
-  answerBadge: { marginTop: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, width: '100%', alignItems: 'center' },
+  memorizeCard: { borderRadius: 14, borderWidth: 2, padding: 14, alignItems: 'center', gap: 6, overflow: 'hidden' },
+  cardImage: { width: '100%', height: 120, borderRadius: 10 },
+  cardEmoji: { fontSize: 36 },
+  cardMeta: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  answerBadge: { marginTop: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, width: '100%', alignItems: 'center' },
   answerBadgeText: { fontSize: 13, fontWeight: '800' },
   readyBtn: { width: '100%', padding: 16, borderRadius: 14, alignItems: 'center', marginTop: 10 },
   readyBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
 
-  questionCard: { width: '100%', borderRadius: 18, borderWidth: 1.5, padding: 20, alignItems: 'center', gap: 14 },
+  questionCard: { width: '100%', borderRadius: 18, borderWidth: 1.5, padding: 20, alignItems: 'center', gap: 14, overflow: 'hidden' },
+  questionImage: { width: '100%', height: 160, borderRadius: 12 },
   questionEmoji: { fontSize: 50 },
   questionPrompt: { fontSize: 17, fontWeight: '800', textAlign: 'center', lineHeight: 24 },
   choicesContainer: { width: '100%', gap: 10, marginTop: 10 },

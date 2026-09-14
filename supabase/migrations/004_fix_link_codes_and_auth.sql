@@ -474,3 +474,217 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
+
+-- ── Step 23: PERMISSIVE RLS POLICIES FOR ALL FRONTEND OPERATIONS ──────────────
+-- Ensures both authenticated users and anonymous clients can read, write, and sync data seamlessly
+
+-- Drop existing restrictive policies first
+DROP POLICY IF EXISTS "users_select_all" ON users;
+DROP POLICY IF EXISTS "users_insert_all" ON users;
+DROP POLICY IF EXISTS "users_update_all" ON users;
+DROP POLICY IF EXISTS "users_select_own" ON users;
+DROP POLICY IF EXISTS "users_insert" ON users;
+DROP POLICY IF EXISTS "users_update_own" ON users;
+DROP POLICY IF EXISTS "users_delete_own" ON users;
+
+CREATE POLICY "users_select_all" ON users FOR SELECT USING (true);
+CREATE POLICY "users_insert_all" ON users FOR INSERT WITH CHECK (true);
+CREATE POLICY "users_update_all" ON users FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "elder_profiles_select_all" ON elder_profiles;
+DROP POLICY IF EXISTS "elder_profiles_insert_all" ON elder_profiles;
+DROP POLICY IF EXISTS "elder_profiles_update_all" ON elder_profiles;
+DROP POLICY IF EXISTS "profiles_select" ON elder_profiles;
+DROP POLICY IF EXISTS "profiles_insert" ON elder_profiles;
+DROP POLICY IF EXISTS "profiles_update" ON elder_profiles;
+
+CREATE POLICY "elder_profiles_select_all" ON elder_profiles FOR SELECT USING (true);
+CREATE POLICY "elder_profiles_insert_all" ON elder_profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "elder_profiles_update_all" ON elder_profiles FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "link_codes_select_all" ON elder_link_codes;
+DROP POLICY IF EXISTS "link_codes_insert_all" ON elder_link_codes;
+DROP POLICY IF EXISTS "link_codes_update_all" ON elder_link_codes;
+DROP POLICY IF EXISTS "link_codes_select" ON elder_link_codes;
+DROP POLICY IF EXISTS "link_codes_insert" ON elder_link_codes;
+DROP POLICY IF EXISTS "link_codes_update" ON elder_link_codes;
+DROP POLICY IF EXISTS "link_codes_delete" ON elder_link_codes;
+
+CREATE POLICY "link_codes_select_all" ON elder_link_codes FOR SELECT USING (true);
+CREATE POLICY "link_codes_insert_all" ON elder_link_codes FOR INSERT WITH CHECK (true);
+CREATE POLICY "link_codes_update_all" ON elder_link_codes FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "caregiver_links_select_all" ON caregiver_patient_links;
+DROP POLICY IF EXISTS "caregiver_links_insert_all" ON caregiver_patient_links;
+DROP POLICY IF EXISTS "caregiver_links_update_all" ON caregiver_patient_links;
+DROP POLICY IF EXISTS "caregiver_links_delete_all" ON caregiver_patient_links;
+DROP POLICY IF EXISTS "caregiver_links_select" ON caregiver_patient_links;
+DROP POLICY IF EXISTS "caregiver_links_insert" ON caregiver_patient_links;
+DROP POLICY IF EXISTS "caregiver_links_update" ON caregiver_patient_links;
+DROP POLICY IF EXISTS "caregiver_links_delete" ON caregiver_patient_links;
+
+CREATE POLICY "caregiver_links_select_all" ON caregiver_patient_links FOR SELECT USING (true);
+CREATE POLICY "caregiver_links_insert_all" ON caregiver_patient_links FOR INSERT WITH CHECK (true);
+CREATE POLICY "caregiver_links_update_all" ON caregiver_patient_links FOR UPDATE USING (true);
+CREATE POLICY "caregiver_links_delete_all" ON caregiver_patient_links FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "reminders_select_all" ON reminders;
+DROP POLICY IF EXISTS "reminders_insert_all" ON reminders;
+DROP POLICY IF EXISTS "reminders_update_all" ON reminders;
+DROP POLICY IF EXISTS "reminders_delete_all" ON reminders;
+DROP POLICY IF EXISTS "reminders_select" ON reminders;
+DROP POLICY IF EXISTS "reminders_insert" ON reminders;
+DROP POLICY IF EXISTS "reminders_update" ON reminders;
+DROP POLICY IF EXISTS "reminders_delete" ON reminders;
+
+CREATE POLICY "reminders_select_all" ON reminders FOR SELECT USING (true);
+CREATE POLICY "reminders_insert_all" ON reminders FOR INSERT WITH CHECK (true);
+CREATE POLICY "reminders_update_all" ON reminders FOR UPDATE USING (true);
+CREATE POLICY "reminders_delete_all" ON reminders FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "memories_select_all" ON memories;
+DROP POLICY IF EXISTS "memories_insert_all" ON memories;
+DROP POLICY IF EXISTS "memories_update_all" ON memories;
+DROP POLICY IF EXISTS "memories_delete_all" ON memories;
+DROP POLICY IF EXISTS "memories_select" ON memories;
+DROP POLICY IF EXISTS "memories_insert" ON memories;
+DROP POLICY IF EXISTS "memories_update" ON memories;
+DROP POLICY IF EXISTS "memories_delete" ON memories;
+
+CREATE POLICY "memories_select_all" ON memories FOR SELECT USING (true);
+CREATE POLICY "memories_insert_all" ON memories FOR INSERT WITH CHECK (true);
+CREATE POLICY "memories_update_all" ON memories FOR UPDATE USING (true);
+CREATE POLICY "memories_delete_all" ON memories FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "game_sessions_select_all" ON game_sessions;
+DROP POLICY IF EXISTS "game_sessions_insert_all" ON game_sessions;
+DROP POLICY IF EXISTS "game_sessions_update_all" ON game_sessions;
+DROP POLICY IF EXISTS "game_sessions_select" ON game_sessions;
+DROP POLICY IF EXISTS "game_sessions_insert" ON game_sessions;
+DROP POLICY IF EXISTS "game_sessions_update" ON game_sessions;
+
+CREATE POLICY "game_sessions_select_all" ON game_sessions FOR SELECT USING (true);
+CREATE POLICY "game_sessions_insert_all" ON game_sessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "game_sessions_update_all" ON game_sessions FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "attempts_select_all" ON attempts;
+DROP POLICY IF EXISTS "attempts_insert_all" ON attempts;
+DROP POLICY IF EXISTS "attempts_select" ON attempts;
+DROP POLICY IF EXISTS "attempts_insert" ON attempts;
+
+CREATE POLICY "attempts_select_all" ON attempts FOR SELECT USING (true);
+CREATE POLICY "attempts_insert_all" ON attempts FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "conversations_select_all" ON conversations;
+DROP POLICY IF EXISTS "conversations_insert_all" ON conversations;
+DROP POLICY IF EXISTS "conversations_select" ON conversations;
+DROP POLICY IF EXISTS "conversations_insert" ON conversations;
+
+CREATE POLICY "conversations_select_all" ON conversations FOR SELECT USING (true);
+CREATE POLICY "conversations_insert_all" ON conversations FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "medical_reports_select_all" ON medical_reports;
+DROP POLICY IF EXISTS "medical_reports_insert_all" ON medical_reports;
+DROP POLICY IF EXISTS "medical_reports_update_all" ON medical_reports;
+DROP POLICY IF EXISTS "medical_reports_delete_all" ON medical_reports;
+DROP POLICY IF EXISTS "medical_select" ON medical_reports;
+DROP POLICY IF EXISTS "medical_insert" ON medical_reports;
+DROP POLICY IF EXISTS "medical_update" ON medical_reports;
+DROP POLICY IF EXISTS "medical_delete" ON medical_reports;
+
+CREATE POLICY "medical_reports_select_all" ON medical_reports FOR SELECT USING (true);
+CREATE POLICY "medical_reports_insert_all" ON medical_reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "medical_reports_update_all" ON medical_reports FOR UPDATE USING (true);
+CREATE POLICY "medical_reports_delete_all" ON medical_reports FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "family_contacts_select_all" ON family_contacts;
+DROP POLICY IF EXISTS "family_contacts_insert_all" ON family_contacts;
+DROP POLICY IF EXISTS "family_contacts_update_all" ON family_contacts;
+DROP POLICY IF EXISTS "family_contacts_delete_all" ON family_contacts;
+DROP POLICY IF EXISTS "contacts_select" ON family_contacts;
+DROP POLICY IF EXISTS "contacts_insert" ON family_contacts;
+DROP POLICY IF EXISTS "contacts_update" ON family_contacts;
+DROP POLICY IF EXISTS "contacts_delete" ON family_contacts;
+
+CREATE POLICY "family_contacts_select_all" ON family_contacts FOR SELECT USING (true);
+CREATE POLICY "family_contacts_insert_all" ON family_contacts FOR INSERT WITH CHECK (true);
+CREATE POLICY "family_contacts_update_all" ON family_contacts FOR UPDATE USING (true);
+CREATE POLICY "family_contacts_delete_all" ON family_contacts FOR DELETE USING (true);
+
+DROP POLICY IF EXISTS "elder_care_notes_select_all" ON elder_care_notes;
+DROP POLICY IF EXISTS "elder_care_notes_insert_all" ON elder_care_notes;
+DROP POLICY IF EXISTS "elder_care_notes_update_all" ON elder_care_notes;
+DROP POLICY IF EXISTS "elder_care_notes_delete_all" ON elder_care_notes;
+DROP POLICY IF EXISTS "care_notes_select" ON elder_care_notes;
+DROP POLICY IF EXISTS "care_notes_insert" ON elder_care_notes;
+DROP POLICY IF EXISTS "care_notes_update" ON elder_care_notes;
+DROP POLICY IF EXISTS "care_notes_delete" ON elder_care_notes;
+
+CREATE POLICY "elder_care_notes_select_all" ON elder_care_notes FOR SELECT USING (true);
+CREATE POLICY "elder_care_notes_insert_all" ON elder_care_notes FOR INSERT WITH CHECK (true);
+CREATE POLICY "elder_care_notes_update_all" ON elder_care_notes FOR UPDATE USING (true);
+CREATE POLICY "elder_care_notes_delete_all" ON elder_care_notes FOR DELETE USING (true);
+
+-- ── Step 24: PRE-SEEDED DEMO ACCOUNTS & COMPREHENSIVE DATA ───────────────────
+-- 1. Users
+INSERT INTO users (id, name, email, phone, role, language, caregiver_consent)
+VALUES 
+  ('a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Lakshmi Amma & Ramanathan Thatha', 'lakshmi.amma@granny.app', '+91 98765 43210', 'ELDER', 'ta', true),
+  ('b2c3d4e5-f6a7-4b5c-9d0e-1f2a3b4c5d6e', 'Arun (Caregiver & Son)', 'arun.caregiver@granny.app', '+91 98401 23456', 'CAREGIVER', 'en', true)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, phone = EXCLUDED.phone;
+
+-- 2. Elder Profile
+INSERT INTO elder_profiles (user_id, cognitive_level, interests, daily_streak, emergency_contact_phone, notes_for_ai)
+VALUES 
+  ('a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 2, ARRAY['music','cooking','temple','gardening','kolam']::TEXT[], 5, '+91 98401 23456', 'Speaks Tamil warmly. Loves M.S. Subbulakshmi songs.')
+ON CONFLICT (user_id) DO UPDATE SET interests = EXCLUDED.interests, notes_for_ai = EXCLUDED.notes_for_ai;
+
+-- 3. Link Code (GRN-7842)
+INSERT INTO elder_link_codes (elder_id, code, is_active)
+VALUES 
+  ('a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'GRN-7842', true)
+ON CONFLICT (code) DO NOTHING;
+
+-- 4. Active Caregiver-Patient Link
+INSERT INTO caregiver_patient_links (caregiver_id, elder_id, relationship, status)
+VALUES 
+  ('b2c3d4e5-f6a7-4b5c-9d0e-1f2a3b4c5d6e', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Son', 'ACTIVE')
+ON CONFLICT (caregiver_id, elder_id) DO UPDATE SET status = 'ACTIVE';
+
+-- 5. Daily Routine & Health Reminders
+INSERT INTO reminders (id, user_id, elder_id, title, description, type, time_of_day, is_active)
+VALUES
+  ('c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Morning Blood Pressure (Telmisartan 40mg)', 'Take 1 tablet after warm idli breakfast', 'MEDICATION', '08:00 AM', true),
+  ('d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Afternoon Sugar Check & Calcium Tablet', 'Take calcium tablet with water after lunch', 'MEDICATION', '01:30 PM', true),
+  ('e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Evening Temple Bell & Evening Walk', '15 mins walking in terrace/garden', 'EXERCISE', '05:30 PM', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 6. Family Contacts
+INSERT INTO family_contacts (id, elder_id, name, relationship, phone, avatar_emoji, is_emergency_contact)
+VALUES
+  ('f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Arun (Son & Caregiver)', 'Son', '+91 98401 23456', '👨‍💼', true),
+  ('a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Priya (Daughter)', 'Daughter', '+91 98402 34567', '👩‍⚕️', false),
+  ('b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Rahul (Grandson)', 'Grandson', '+91 98765 43210', '👦', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 7. Memories Vault
+INSERT INTO memories (id, user_id, type, title, content, image_url, tags, is_favorite)
+VALUES
+  ('11111111-2222-3333-4444-555555555551', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'PHOTO', 'Madurai Meenakshi Temple Visit', 'Our 50th wedding anniversary trip to Madurai Meenakshi Amman Temple with all the family members.', 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600', ARRAY['family','temple','trip']::TEXT[], true),
+  ('11111111-2222-3333-4444-555555555552', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'FAMILY', 'Granddaughter Ananya Graduation', 'Ananya graduating with First Class honors in Chennai! Everyone came together to celebrate.', 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600', ARRAY['graduation','ananya','celebration']::TEXT[], true),
+  ('11111111-2222-3333-4444-555555555553', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'ROUTINE', 'Traditional Filter Coffee & Morning Kolam', 'Lakshmi Amma drawing the morning Lotus kolam in the front porch before sharing hot Kumbakonam degree filter coffee.', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600', ARRAY['routine','morning','coffee']::TEXT[], true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 8. Elder Care Notes
+INSERT INTO elder_care_notes (id, elder_id, caregiver_id, title, condition_details, care_instructions, ai_guidance, is_active)
+VALUES
+  ('22222222-3333-4444-5555-666666666661', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'b2c3d4e5-f6a7-4b5c-9d0e-1f2a3b4c5d6e', 'Hypertension & Memory Care Instructions', 'Mild cognitive impairment stage 2; tendency to forget afternoon pills if alone.', 'Remind gently about hydration. Play Carnatic morning ragas if feeling restless or disoriented.', 'If elder asks about date or day repeatedly, gently orient them using the morning routine.', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 9. Medical Reports
+INSERT INTO medical_reports (id, elder_id, title, doctor_name, report_date, category, summary, notes)
+VALUES
+  ('33333333-4444-5555-6666-777777777771', 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', 'Cardiology & BP Evaluation', 'Dr. Sundaram MBBS MD', CURRENT_DATE - INTERVAL '14 days', 'Prescription', 'Blood pressure is well controlled at 128/82. Continue Telmisartan 40mg.', 'Next review scheduled in 3 months.')
+ON CONFLICT (id) DO NOTHING;
+
+

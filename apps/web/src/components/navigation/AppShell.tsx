@@ -8,6 +8,7 @@ interface AppShellProps {
   onLogout: () => void;
   language: string;
   onToggleLanguage: () => void;
+  onSosTrigger?: () => void;
   children: React.ReactNode;
 }
 
@@ -18,6 +19,7 @@ export default function AppShell({
   onLogout,
   language,
   onToggleLanguage,
+  onSosTrigger,
   children
 }: AppShellProps) {
   const isCaretaker = user.role === 'CAREGIVER';
@@ -35,21 +37,20 @@ export default function AppShell({
       }}>
         {/* Left: Brand + Prominent Portal Mode Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div 
-            style={{ fontSize: '32px', cursor: 'pointer', lineHeight: 1 }} 
+          <img 
+            src="/logo.png" 
+            alt="Granny Logo" 
+            style={{ height: '44px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }} 
             onClick={() => setPage(isCaretaker ? 'dashboard' : 'home')}
-          >
-            🌸
-          </div>
+          />
+          <img 
+            src="/title.png" 
+            alt="Granny" 
+            style={{ height: '32px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }} 
+            onClick={() => setPage(isCaretaker ? 'dashboard' : 'home')}
+          />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span 
-                style={{ fontWeight: 900, color: 'var(--color-primary-dark)', fontSize: '22px', letterSpacing: '-0.02em', cursor: 'pointer' }}
-                onClick={() => setPage(isCaretaker ? 'dashboard' : 'home')}
-              >
-                {t('app_name', language)}
-              </span>
-
               {/* High-visibility Portal Mode Pill */}
               {isCaretaker ? (
                 <div style={{
@@ -96,7 +97,13 @@ export default function AppShell({
           {/* Emergency SOS Button in Header (for Elders) */}
           {!isCaretaker && (
             <button
-              onClick={() => alert(language === 'ta' ? '🚨 அவசர உதவி அழைப்பு விடுக்கப்பட்டது! உங்கள் குடும்பத்தினருக்கு தகவல் அனுப்பப்பட்டுள்ளது.' : '🚨 Calling designated emergency contact: Rahul (Son - +91 98765 43210). Help is on the way!')}
+              onClick={() => {
+                if (onSosTrigger) {
+                  onSosTrigger();
+                } else {
+                  alert(language === 'ta' ? '🚨 அவசர உதவி அழைப்பு விடுக்கப்பட்டது! உங்கள் குடும்பத்தினருக்கு தகவல் அனுப்பப்பட்டுள்ளது.' : '🚨 Calling designated emergency contact: Rahul (Son - +91 98765 43210). Help is on the way!');
+                }
+              }}
               style={{
                 padding: '6px 14px', borderRadius: 'var(--radius-full)',
                 backgroundColor: 'var(--color-danger)', color: '#FFFFFF',

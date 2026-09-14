@@ -1,7 +1,10 @@
 // ============================================================================
 // Granny — React Native (Expo) Root Mobile Application
+// Complete Elder Sanctuary & Caregiver Portal with 4-Key Groq Engine,
+// Real-time Audio Synthesizer, 20 Nostalgia Games, Memory Vault, Health Alarms,
+// and Loud SOS Siren Dispatch
 // ============================================================================
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -10,6 +13,8 @@ import {
   StyleSheet,
   Alert,
   StatusBar,
+  Modal,
+  Image,
 } from 'react-native';
 import { THEME } from './src/constants/theme';
 import AuthScreen from './src/screens/Auth/AuthScreen';
@@ -17,7 +22,10 @@ import HomeScreen from './src/screens/Home/HomeScreen';
 import CompanionScreen from './src/screens/Companion/CompanionScreen';
 import GamesScreen from './src/screens/Games/GamesScreen';
 import RemindersScreen from './src/screens/Health/RemindersScreen';
+import MemoryScreen from './src/screens/Memory/MemoryScreen';
 import CaregiverScreen from './src/screens/Family/CaregiverScreen';
+import { audioService } from './src/services/audioService';
+import { supabaseAuth } from './src/services/supabaseService';
 
 interface MobileUser {
   id: string;
@@ -26,41 +34,58 @@ interface MobileUser {
   language: string;
 }
 
-type ElderTab = 'home' | 'companion' | 'games' | 'health';
-type CaregiverTab = 'caregiver' | 'alarms' | 'medical';
+type ElderTab = 'home' | 'companion' | 'games' | 'memory' | 'health';
 
 export default function App() {
-  const [user, setUser] = useState<MobileUser | null>({
-    id: 'demo_user',
-    name: 'Lakshmi Amma & Ramanathan Thatha',
-    role: 'ELDER',
-    language: 'ta',
-  });
+  const [user, setUser] = useState<MobileUser | null>(null);
   const [activeElderTab, setActiveElderTab] = useState<ElderTab>('home');
   const [inGamesLibrary, setInGamesLibrary] = useState(false);
   const [language, setLanguage] = useState<'en' | 'ta'>('ta');
   const [highContrast, setHighContrast] = useState(false);
+  const [sosModalVisible, setSosModalVisible] = useState(false);
+  const [healthDrawerVisible, setHealthDrawerVisible] = useState(false);
+
+  useEffect(() => {
+    supabaseAuth.loadPersistedAuth().then(persisted => {
+      if (persisted?.user) {
+        setUser(persisted.user);
+        if (persisted.user.language === 'ta' || persisted.user.language === 'en') {
+          setLanguage(persisted.user.language as any);
+        }
+      }
+    }).catch(() => {});
+  }, []);
 
   const colors = highContrast ? THEME.highContrastColors : THEME.colors;
+  const isTamil = language === 'ta';
 
-  const handleEmergency = () => {
-    Alert.alert(
-      language === 'ta' ? '🚨 அவசர உதவி (SOS)' : '🚨 Emergency Assistance',
-      language === 'ta'
-        ? 'குடும்ப அவசர தொடர்பு: ராகுல் (மகன் - +91 98765 43210).\n\nகிரானி எப்போதும் உங்களுடன் பாதுகாப்பாக உள்ளது.'
-        : 'Connecting to priority emergency contact: Rahul (Son - +91 98765 43210).\n\nGranny stays right on screen with you.',
-      [{ text: 'OK', style: 'default' }]
-    );
+  const handleEmergencySos = () => {
+    audioService.playSosSiren();
+    setSosModalVisible(true);
   };
 
-  const handleLogout = () => {
+  const handleDismissSos = () => {
+    audioService.stopSosSiren();
+    setSosModalVisible(false);
+  };
+
+  const handleLogout = async () => {
+    audioService.stopSosSiren();
+    audioService.stopSpeaking();
+    await supabaseAuth.clearPersistedAuth();
     setUser(null);
     setActiveElderTab('home');
     setInGamesLibrary(false);
   };
 
   const toggleLanguage = () => {
-    setLanguage(l => l === 'ta' ? 'en' : 'ta');
+    audioService.playTapSound();
+    setLanguage(l => (l === 'ta' ? 'en' : 'ta'));
+  };
+
+  const toggleHighContrast = () => {
+    audioService.playTapSound();
+    setHighContrast(h => !h);
   };
 
   if (!user) {
@@ -73,7 +98,9 @@ export default function App() {
           }
         }}
         highContrast={highContrast}
-        onToggleContrast={() => setHighContrast(h => !h)}
+        onToggleContrast={toggleHighContrast}
+        language={language}
+        onToggleLanguage={toggleLanguage}
       />
     );
   }
@@ -84,35 +111,97 @@ export default function App() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
       <StatusBar barStyle={highContrast ? 'light-content' : 'dark-content'} />
 
-      {/* Top App Bar — Strictly Granny Brand & Language Toggle */}
+      {/* Emergency SOS Active Siren Overlay */}
+      <Modal visible={sosModalVisible} transparent animationType="fade">
+        <View style={styles.sosModalBackdrop}>
+          <View style={[styles.sosModalBox, { backgroundColor: '#B91C1C' }]}>
+            <Text style={styles.sosModalEmoji}>🚨</Text>
+            <Text style={styles.sosModalTitle}>
+              {isTamil ? 'அவசர உதவி (SOS) இயக்கப்பட்டது!' : 'EMERGENCY SOS BROADCAST!'}
+            </Text>
+            <Text style={styles.sosModalDesc}>
+              {isTamil
+                ? 'உங்கள் குடும்ப பராமரிப்பாளர் ராகுலுக்கு (+91 98765 43210) உடனடி அவசர அழைப்பும் எச்சரிக்கை சைரனும் அனுப்பப்படுகிறது.\n\nகிரானி எப்போதும் உங்கள் பாதுகாப்பில் உள்ளது.'
+                : 'Pulsing emergency siren active on both your device and linked caregiver phone. Priority call dispatched to Rahul (Son: +91 98765 43210).'}
+            </Text>
+            <TouchableOpacity
+              style={styles.sosDismissBtn}
+              onPress={handleDismissSos}
+            >
+              <Text style={styles.sosDismissBtnText}>
+                {isTamil ? 'சைரன் நிறுத்து / பாதுகாப்பாக உள்ளேன் ✕' : 'Silence Siren / I Am Safe Now ✕'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Health & Alarms Slide-over Modal */}
+      <Modal visible={healthDrawerVisible} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+          <View style={[styles.drawerHeader, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+            <TouchableOpacity onPress={() => setHealthDrawerVisible(false)} style={styles.drawerCloseBtn}>
+              <Text style={[styles.drawerCloseText, { color: colors.primary }]}>
+                ← {isTamil ? 'திரும்ப' : 'Back'}
+              </Text>
+            </TouchableOpacity>
+            <Text style={[styles.drawerTitle, { color: colors.textPrimary }]}>
+              💊 {isTamil ? 'மருந்து & நினைவூட்டல் அட்டவணை' : 'Health & Alarms'}
+            </Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <RemindersScreen highContrast={highContrast} />
+        </SafeAreaView>
+      </Modal>
+
+      {/* Top App Bar — Granny Logo & Title PNG, SOS Button, Language & Switcher */}
       <View style={[styles.appBar, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={[styles.logo, { color: colors.primaryDark }]}>🌸 Granny</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Image source={require('./assets/logo.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
+          <Image source={require('./assets/title.png')} style={{ width: 85, height: 24 }} resizeMode="contain" />
           <View style={[styles.rolePill, { backgroundColor: isElder ? colors.primaryLight : colors.secondaryLight }]}>
             <Text style={[styles.rolePillText, { color: isElder ? colors.primary : colors.secondaryDark }]}>
-              {isElder ? (language === 'ta' ? 'முதியோர் சரணாலயம்' : 'Elder Space') : (language === 'ta' ? 'பராமரிப்பாளர் தளம்' : 'Caretaker Portal')}
+              {isElder ? (isTamil ? 'முதியோர்' : 'Elder') : (isTamil ? 'பராமரிப்பாளர்' : 'Caregiver')}
             </Text>
           </View>
         </View>
 
         <View style={styles.topActions}>
-          {/* Language Toggle */}
+          {/* Quick SOS Siren Button for Elders */}
+          {isElder && (
+            <TouchableOpacity
+              style={[styles.sosTopBtn, { backgroundColor: '#DC2626' }]}
+              onPress={handleEmergencySos}
+            >
+              <Text style={styles.sosTopBtnText}>🚨 SOS</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Language Switcher */}
           <TouchableOpacity
             style={[styles.langBtn, { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
             onPress={toggleLanguage}
           >
             <Text style={[styles.langBtnText, { color: colors.primaryDark }]}>
-              {language === 'ta' ? 'English' : 'தமிழ்'}
+              {isTamil ? 'English' : 'தமிழ்'}
             </Text>
           </TouchableOpacity>
 
-          {/* Exit */}
+          {/* High Contrast Toggle */}
+          <TouchableOpacity
+            style={[styles.contrastBtn, { backgroundColor: highContrast ? '#1E293B' : '#F3F4F6' }]}
+            onPress={toggleHighContrast}
+          >
+            <Text style={{ fontSize: 13 }}>{highContrast ? '☀️' : '👁️'}</Text>
+          </TouchableOpacity>
+
+          {/* Exit / Switch Role */}
           <TouchableOpacity
             style={[styles.exitBtn, { backgroundColor: '#FEE2E2' }]}
             onPress={handleLogout}
           >
             <Text style={[styles.exitBtnText, { color: '#DC2626' }]}>
-              {language === 'ta' ? 'வெளியேறு' : 'Exit'}
+              {isTamil ? 'வெளியேறு' : 'Exit'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -132,14 +221,25 @@ export default function App() {
             />
           ) : activeElderTab === 'home' ? (
             <HomeScreen
-              onNavigate={(tab) => setActiveElderTab(tab as ElderTab)}
+              onNavigate={(tab) => {
+                if (tab === 'health') {
+                  audioService.playMedicineAlertChime();
+                  setHealthDrawerVisible(true);
+                } else if (tab === 'games') {
+                  setInGamesLibrary(true);
+                } else {
+                  setActiveElderTab(tab as ElderTab);
+                }
+              }}
               onOpenGames={() => setInGamesLibrary(true)}
-              onEmergency={handleEmergency}
+              onEmergency={handleEmergencySos}
               language={language}
               highContrast={highContrast}
             />
           ) : activeElderTab === 'companion' ? (
-            <CompanionScreen highContrast={highContrast} />
+            <CompanionScreen userId={user.id} language={language} highContrast={highContrast} />
+          ) : activeElderTab === 'memory' ? (
+            <MemoryScreen userId={user.id} language={language} highContrast={highContrast} />
           ) : (
             <RemindersScreen highContrast={highContrast} />
           )
@@ -153,41 +253,69 @@ export default function App() {
         <View style={[styles.bottomNav, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => { setInGamesLibrary(false); setActiveElderTab('home'); }}
+            onPress={() => {
+              audioService.playTapSound();
+              setInGamesLibrary(false);
+              setActiveElderTab('home');
+            }}
           >
             <Text style={styles.navEmoji}>🏠</Text>
             <Text style={[styles.navLabel, { color: activeElderTab === 'home' ? colors.primary : colors.textSecondary }]}>
-              {language === 'ta' ? 'முகப்பு' : 'Home'}
+              {isTamil ? 'முகப்பு' : 'Home'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => { setInGamesLibrary(false); setActiveElderTab('companion'); }}
+            onPress={() => {
+              audioService.playTapSound();
+              setInGamesLibrary(false);
+              setActiveElderTab('companion');
+            }}
           >
             <Text style={styles.navEmoji}>💬</Text>
             <Text style={[styles.navLabel, { color: activeElderTab === 'companion' ? colors.primary : colors.textSecondary }]}>
-              {language === 'ta' ? 'ஆஷா' : 'Asha AI'}
+              {isTamil ? 'ஆஷா AI' : 'Asha AI'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => setInGamesLibrary(true)}
+            onPress={() => {
+              audioService.playTapSound();
+              setInGamesLibrary(true);
+            }}
           >
             <Text style={styles.navEmoji}>🧩</Text>
             <Text style={[styles.navLabel, { color: inGamesLibrary ? colors.primary : colors.textSecondary }]}>
-              {language === 'ta' ? 'விளையாட்டு' : '20 Games'}
+              {isTamil ? 'விளையாட்டுகள்' : '20 Games'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navItem}
-            onPress={() => { setInGamesLibrary(false); setActiveElderTab('health'); }}
+            onPress={() => {
+              audioService.playTapSound();
+              setInGamesLibrary(false);
+              setActiveElderTab('memory');
+            }}
+          >
+            <Text style={styles.navEmoji}>📸</Text>
+            <Text style={[styles.navLabel, { color: activeElderTab === 'memory' ? colors.primary : colors.textSecondary }]}>
+              {isTamil ? 'நினைவுகள்' : 'Memories'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => {
+              audioService.playMedicineAlertChime();
+              setHealthDrawerVisible(true);
+            }}
           >
             <Text style={styles.navEmoji}>💊</Text>
-            <Text style={[styles.navLabel, { color: activeElderTab === 'health' ? colors.primary : colors.textSecondary }]}>
-              {language === 'ta' ? 'மருந்து' : 'Health'}
+            <Text style={[styles.navLabel, { color: colors.textSecondary }]}>
+              {isTamil ? 'மருந்து' : 'Health'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -202,18 +330,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
   logo: { fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
   rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   rolePillText: { fontSize: 11, fontWeight: '800' },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sosTopBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  sosTopBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
   langBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
   langBtnText: { fontSize: 12, fontWeight: '800' },
-  exitBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  exitBtnText: { fontSize: 12, fontWeight: '800' },
+  contrastBtn: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  exitBtn: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8 },
+  exitBtnText: { fontSize: 11, fontWeight: '800' },
   content: { flex: 1 },
   bottomNav: {
     flexDirection: 'row',
@@ -221,7 +352,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
   },
-  navItem: { alignItems: 'center', minWidth: 64 },
+  navItem: { alignItems: 'center', minWidth: 60 },
   navEmoji: { fontSize: 22 },
   navLabel: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: 1 },
+  drawerCloseBtn: { minWidth: 60 },
+  drawerCloseText: { fontSize: 16, fontWeight: '800' },
+  drawerTitle: { fontSize: 16, fontWeight: '800' },
+  // SOS Modal
+  sosModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  sosModalBox: { width: '100%', borderRadius: 20, padding: 24, alignItems: 'center', gap: 14 },
+  sosModalEmoji: { fontSize: 64 },
+  sosModalTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', textAlign: 'center' },
+  sosModalDesc: { color: '#FFFFFF', fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  sosDismissBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14, marginTop: 10, width: '100%', alignItems: 'center' },
+  sosDismissBtnText: { color: '#DC2626', fontSize: 16, fontWeight: '900' },
 });

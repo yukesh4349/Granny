@@ -1121,6 +1121,7 @@ export default function App() {
         setLanguage(next);
         persistPreferences({ language: next });
       }}
+      onSosTrigger={handleSOS}
     >
       <div className="container">
 

@@ -148,7 +148,7 @@ class GroqService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-120b',
           messages: [{ role: 'user', content: 'Say "OK" in 1 word.' }],
           max_tokens: 5,
         }),
@@ -183,7 +183,7 @@ class GroqService {
       throw new Error('No Groq API keys configured. Please add a Groq API key in Settings.');
     }
 
-    const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    const models = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'groq/compound-mini', 'openai/gpt-oss-20b'];
     let lastError: any = null;
 
     // Try starting from current index, rotate across pool
@@ -283,17 +283,18 @@ class GroqService {
       : 'Madurai temple wedding in 1975, childhood village bullock cart rides, filter coffee, Carnatic music, terrace gardening.';
 
     const systemPrompt = `You are the master cognitive game designer for "Granny", an app for elderly Indian grandparents (தாத்தா & பாட்டி).
-Generate ${count + 2} completely UNIQUE, high-warmth, nostalgic cognitive questions for the game "${gameTitle}" (${gameKey}).
+Generate ${count + 2} completely UNIQUE, high-warmth, nostalgic cognitive questions STRICTLY AND EXCLUSIVELY for the specific game "${gameTitle}" (${gameKey}).
 
 CRITICAL REQUIREMENTS:
-1. Cultural resonance: Tamil Nadu / South Indian heritage, vintage 1960s-1990s nostalgia, traditional games, kitchen aromas, old cinema, temple bells, festivals (Pongal, Deepavali), family life.
-2. Customize gently using the elder's details:
+1. Game Specificity: Every single question must test recall, rules, mechanics, items, steps, or actions of "${gameTitle}" (${gameKey}). Do NOT ask questions about unrelated games or generic topics.
+2. Cultural resonance: Tamil Nadu / South Indian heritage, vintage 1960s-1990s nostalgia of playing "${gameTitle}".
+3. Customize gently with elder's details:
 - Elder Name: ${elderProfile.name}
-- Family Memories & Notes: ${memoriesText}
-3. Language: ${lang === 'ta' ? 'Write the questions and choices in pure, warm Tamil (தமிழ்)' : 'Write in warm, clear English with occasional friendly Tamil cultural terms'}.
-4. Provide exactly 4 options per question: 1 correct answer and 3 distinct, plausible, respectful distractors.
-5. Provide a contextual emoji and short memory hook for each.
-6. Return ONLY valid JSON with this exact schema:
+- Family Context: ${memoriesText}
+4. Language: ${lang === 'ta' ? 'Write the questions and choices in pure, warm Tamil (தமிழ்)' : 'Write in warm, clear English with occasional friendly Tamil cultural terms'}.
+5. Provide exactly 4 options per question: 1 correct answer and 3 distinct, plausible, respectful distractors for "${gameTitle}".
+6. Provide a contextual emoji and short memory hook for each.
+7. Return ONLY valid JSON with this exact schema:
 {
   "items": [
     {
@@ -308,7 +309,7 @@ CRITICAL REQUIREMENTS:
   ]
 }`;
 
-    const userPrompt = `Generate ${count + 2} fresh, never-before-seen questions for ${gameTitle}. Make sure every question is novel, heartwarming, and enjoyable for ${elderProfile.name}.`;
+    const userPrompt = `Generate ${count + 2} fresh, never-before-seen questions specifically for the game ${gameTitle} (${gameKey}). Make sure every question is novel, heartwarming, and enjoyable for ${elderProfile.name}.`;
 
     try {
       const response = await this.callGroq(systemPrompt, userPrompt, {
@@ -372,15 +373,21 @@ CRITICAL REQUIREMENTS:
     const samplePool: Record<string, any[]> = {
       nondi: [
         { q: lang === 'ta' ? 'நொண்டியில் கட்டம் 1ல் கல் விழுந்ததும் எந்தக் காலில் தாவி நிற்க வேண்டும்?' : 'In Nondi (Hopscotch), when your pebble lands in Square 1, how do you jump?', a: lang === 'ta' ? 'ஒற்றை வலது கால் தாளம்' : 'Single Right Foot Balance', d: [lang === 'ta' ? 'இரண்டு கால்களும் ஒரே நேரத்தில்' : 'Both Feet Flat', lang === 'ta' ? 'பின்னோக்கி குதித்தல்' : 'Backwards Hop', lang === 'ta' ? 'கைகளால் சமநிலை' : 'Double Hand Support'], e: '🦶' },
-        { q: lang === 'ta' ? 'நடுவண் கட்டம் 4ஐத் தாண்டிய பின் இரட்டை இறக்கைகள் எந்தக் கட்டங்கள்?' : 'Which squares form the double wings after passing the central pivot?', a: lang === 'ta' ? 'கட்டம் 5 மற்றும் 6' : 'Squares 5 and 6', d: [lang === 'ta' ? 'கட்டம் 1 மற்றும் 2' : 'Squares 1 and 2', lang === 'ta' ? 'கட்டம் 7 மற்றும் 8' : 'Squares 7 and 8', lang === 'ta' ? 'கட்டம் 3 மட்டும்' : 'Square 3 only'], e: '🦵' },
-        { q: lang === 'ta' ? 'உச்சி "பழம்" (கட்டம் 8) அடைந்ததும் எல்லைக் கோட்டைத் தொடாமல் என்ன செய்ய வேண்டும்?' : 'What must you execute at the top peak (Square 8) without touching lines?', a: lang === 'ta' ? '180° சுழற்சி தாவல்' : '180° Turnaround Jump', d: [lang === 'ta' ? 'வெளியேறி அமர்தல்' : 'Step outside grid', lang === 'ta' ? 'கல்லை உதைத்தல்' : 'Kick pebble away', lang === 'ta' ? 'விளையாட்டை முடித்தல்' : 'Stop instantly'], e: '🎯' },
+        { q: lang === 'ta' ? 'நடுவண் கட்டம் 4ஐத் தாண்டிய பின் இரட்டை இறக்கைகள் எந்தக் கட்டங்கள்?' : 'Which squares form the double wings after passing the central pivot in Nondi?', a: lang === 'ta' ? 'கட்டம் 5 மற்றும் 6' : 'Squares 5 and 6', d: [lang === 'ta' ? 'கட்டம் 1 மற்றும் 2' : 'Squares 1 and 2', lang === 'ta' ? 'கட்டம் 7 மற்றும் 8' : 'Squares 7 and 8', lang === 'ta' ? 'கட்டம் 3 மட்டும்' : 'Square 3 only'], e: '🦵' },
+        { q: lang === 'ta' ? 'நொண்டியில் உச்சி "பழம்" (கட்டம் 8) அடைந்ததும் எல்லைக் கோட்டைத் தொடாமல் என்ன செய்ய வேண்டும்?' : 'In Nondi, what must you execute at the top peak "Pazham" (Square 8) without touching lines?', a: lang === 'ta' ? '180° சுழற்சி தாவல்' : '180° Turnaround Jump', d: [lang === 'ta' ? 'வெளியேறி அமர்தல்' : 'Step outside grid', lang === 'ta' ? 'கல்லை உதைத்தல்' : 'Kick pebble away', lang === 'ta' ? 'விளையாட்டை முடித்தல்' : 'Stop instantly'], e: '🎯' },
         { q: lang === 'ta' ? 'பாரம்பரிய நொண்டிக் கோடு வரைய அக்காலத்தில் எதைப் பயன்படுத்தினர்?' : 'What traditional material was used to draw the Nondi grid in the village courtyard?', a: lang === 'ta' ? 'செங்கல் பொடி அல்லது சாக்பீஸ்' : 'Red Brick Powder or Chalk', d: [lang === 'ta' ? 'எண்ணெய் வண்ணம்' : 'Oil Paint', lang === 'ta' ? 'பிளாஸ்டிக் டேப்' : 'Plastic Tape', lang === 'ta' ? 'கருப்பு மை' : 'Black Ink'], e: '🧱' },
       ],
+      kanche: [
+        { q: lang === 'ta' ? 'கோலி குண்டு விளையாட்டில் வட்டத்தின் நடுவில் வைக்கப்படும் முக்கிய கோலி எது?' : 'In Kanche, which target marble rests in the center pit?', a: lang === 'ta' ? 'பச்சை நிற பூனைக்கண் கோலி' : 'Emerald Green Cat-Eye Marble', d: [lang === 'ta' ? 'வெள்ளை கோலி' : 'White Marble', lang === 'ta' ? 'கருப்பு கோலி' : 'Black Marble', lang === 'ta' ? 'மஞ்சள் கோலி' : 'Yellow Marble'], e: '🟢' },
+        { q: lang === 'ta' ? 'கோலியை குறிபார்த்து விரலால் சுண்டும் முறைக்கு என்ன பெயர்?' : 'What is the traditional thumb flicking technique called in Kanche?', a: lang === 'ta' ? 'கட்டை விரல் சுண்டு வித்தை' : 'Thumb Release Flick', d: [lang === 'ta' ? 'கால் உதை' : 'Foot Kick', lang === 'ta' ? 'கை தட்டு' : 'Hand Clap', lang === 'ta' ? 'கம்பால் அடித்தல்' : 'Stick Strike'], e: '🎯' },
+      ],
+      gilli_danda: [
+        { q: lang === 'ta' ? 'கிட்டிப்புல் விளையாட்டில் சிறிய மரத்துண்டை மேலே எழும்ப வைக்க என்ன செய்ய வேண்டும்?' : 'In Gilli Danda, how do you pop the small gilli into the air?', a: lang === 'ta' ? 'தாண்டாவால் முனையை லேசாகத் தட்ட வேண்டும்' : 'Tap tapered tip with the Danda stick', d: [lang === 'ta' ? 'கையால் எறிய வேண்டும்' : 'Throw with hand', lang === 'ta' ? 'காலால் மிதிக்க வேண்டும்' : 'Step with foot', lang === 'ta' ? 'மணலில் புதைக்க வேண்டும்' : 'Bury in sand'], e: '🏏' },
+        { q: lang === 'ta' ? 'கிட்டிப்புல் தூரத்தை அக்காலத்தில் எதனால் அளந்தனர்?' : 'How was the hitting distance measured in traditional Gilli Danda?', a: lang === 'ta' ? 'தாண்டா மரக்குச்சியின் நீளத்தால்' : 'Length of Danda Stick', d: [lang === 'ta' ? 'கடிகார மணியால்' : 'Clock Hours', lang === 'ta' ? 'கிலோகிராம் எடையால்' : 'Kilograms', lang === 'ta' ? 'ரூபாய் நோட்டால்' : 'Currency Notes'], e: '📏' },
+      ],
       default: [
-        { q: lang === 'ta' ? 'திருவிழா காலங்களில் வாசலில் போடப்படும் மாக்கோலத்தின் சிறப்பு என்ன?' : 'What is the auspicious significance of rice-flour Kolam at the front entrance?', a: lang === 'ta' ? 'எறும்புகளுக்கும் சிற்றுயிர்களுக்கும் உணவளிக்கும் தர்மம்' : 'Welcoming prosperity & feeding tiny birds/ants', d: [lang === 'ta' ? 'அலங்காரம் மட்டுமே' : 'Only for decoration', lang === 'ta' ? 'தூசியைத் தடுக்க' : 'To block dust', lang === 'ta' ? 'வண்ண விளக்குகளுக்குப் பதிலாக' : 'Instead of lights'], e: '🌸' },
-        { q: lang === 'ta' ? 'பாரம்பரியக் கூட்டுக்கு வாசம் சேர்க்கும் பித்தளைத் தாளிப்பு கரண்டி பெயர் என்ன?' : 'Which traditional brass vessel is used to temper fragrant mustard and curry leaves?', a: lang === 'ta' ? 'தாளிப்புக் கரண்டி (Tadka Pan)' : 'Brass Tadka Pan', d: [lang === 'ta' ? 'இட்லி பாத்திரம்' : 'Idli Cooker', lang === 'ta' ? 'அடை தவா' : 'Adai Tawa', lang === 'ta' ? 'காபி பில்டர்' : 'Coffee Filter'], e: '🍳' },
-        { q: lang === 'ta' ? 'கும்பகோணம் டிகிரி காபியின் நறுமணத்திற்கு முக்கிய காரணம் என்ன?' : 'What gives authentic Kumbakonam Degree Coffee its rich aroma?', a: lang === 'ta' ? 'தூய பசும்பால் மற்றும் முதல் டிகாஷன்' : 'Pure rich cow milk and first fresh decoction', d: [lang === 'ta' ? 'அதிக சர்க்கரை' : 'Heavy refined sugar', lang === 'ta' ? 'குளிர்ந்த நீர்' : 'Cold chilled water', lang === 'ta' ? 'தேயிலை பொடி' : 'Tea powder mix'], e: '☕' },
-        { q: lang === 'ta' ? 'மாலை நேரத்தில் வராண்டாவில் பாட்டி பாடும் இனிமையான தாலாட்டுப் பாடல் எது?' : 'Which timeless lullaby was sung by Grandma on the breezy porch swing?', a: lang === 'ta' ? 'ஆராரோ ஆரிரரோ கண்ணே' : 'Aararo Aariraro Traditional Lullaby', d: [lang === 'ta' ? 'வேகமான பாப் பாடல்' : 'Fast Pop Song', lang === 'ta' ? 'மேற்கத்திய இசை' : 'Western Rock', lang === 'ta' ? 'மவுன விரதம்' : 'Silence'], e: '🎶' },
+        { q: lang === 'ta' ? 'நொண்டியில் கட்டம் 1ல் கல் விழுந்ததும் எந்தக் காலில் தாவி நிற்க வேண்டும்?' : 'In Nondi (Hopscotch), when your pebble lands in Square 1, how do you jump?', a: lang === 'ta' ? 'ஒற்றை வலது கால் தாளம்' : 'Single Right Foot Balance', d: [lang === 'ta' ? 'இரண்டு கால்களும் ஒரே நேரத்தில்' : 'Both Feet Flat', lang === 'ta' ? 'பின்னோக்கி குதித்தல்' : 'Backwards Hop', lang === 'ta' ? 'கைகளால் சமநிலை' : 'Double Hand Support'], e: '🦶' },
+        { q: lang === 'ta' ? 'நொண்டியில் உச்சி "பழம்" (கட்டம் 8) அடைந்ததும் எல்லைக் கோட்டைத் தொடாமல் என்ன செய்ய வேண்டும்?' : 'In Nondi, what must you execute at the top peak "Pazham" (Square 8) without touching lines?', a: lang === 'ta' ? '180° சுழற்சி தாவல்' : '180° Turnaround Jump', d: [lang === 'ta' ? 'வெளியேறி அமர்தல்' : 'Step outside grid', lang === 'ta' ? 'கல்லை உதைத்தல்' : 'Kick pebble away', lang === 'ta' ? 'விளையாட்டை முடித்தல்' : 'Stop instantly'], e: '🎯' },
       ]
     };
 

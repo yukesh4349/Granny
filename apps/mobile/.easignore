@@ -1,0 +1,24 @@
+# Ignore Gradle lock files and cache from EAS archive
+.gradle
+**/.gradle
+**/build
+**/.cxx
+android/.gradle
+android/app/build
+android/build
+android/.idea
+android/.cxx
+
+# Dependencies & temporary caches
+node_modules
+.expo
+.expo-shared
+web-build
+dist
+.next
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

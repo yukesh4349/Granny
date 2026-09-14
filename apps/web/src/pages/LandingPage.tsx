@@ -42,15 +42,8 @@ export default function LandingPage({
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-          <div style={{ fontSize: '38px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}>🌸</div>
-          <div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-primary-dark)', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {t('app_name', language)}
-            </div>
-            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
-              {t('tagline', language)}
-            </div>
-          </div>
+          <img src="/logo.png" alt="Granny Logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
+          <img src="/title.png" alt="Granny" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
         </div>
 
         {/* Accessibility & Auth Actions */}

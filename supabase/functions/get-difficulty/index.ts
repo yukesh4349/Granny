@@ -1,3 +1,5 @@
+/// <reference path="../deno.d.ts" />
+
 // Supabase Edge Function: /get-difficulty
 // Adaptive Difficulty calculation based on rolling accuracy and latency
 
@@ -40,16 +42,18 @@ export function computeAdaptiveDifficulty(
   // Take the most recent 5 to 8 attempts
   const sample = recentAttempts.slice(-8);
   const correctCount = sample.filter((a) => a.correct).length;
-  const accuracyRate = correctCount / sample.length;
+  const accuracyRate = sample.length > 0 ? correctCount / sample.length : 1.0;
   const averageLatencyMs =
-    sample.reduce((sum, a) => sum + (a.latency_ms || 2500), 0) / sample.length;
+    sample.length > 0
+      ? sample.reduce((sum, a) => sum + (a.latency_ms || 2500), 0) / sample.length
+      : 2500;
 
   let nextLevel = currentDifficulty || 1;
 
   // Adaptive rules
   if (sample.length >= 3) {
     if (accuracyRate >= 0.8 && averageLatencyMs < 4000) {
-      // High accuracy and fast latency -> advance difficulty
+      // High accuracy and fast latency -> advance difficulty gently
       nextLevel = Math.min(5, nextLevel + 1);
     } else if (accuracyRate < 0.5 || averageLatencyMs > 9000) {
       // Low accuracy or high latency -> decrease difficulty for gentler experience
@@ -73,7 +77,7 @@ export function computeAdaptiveDifficulty(
   };
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -84,10 +88,11 @@ serve(async (req) => {
     let attemptsData: AttemptRecord[] = recentAttempts;
 
     // If userId and gameKey provided, optionally fetch latest attempts from DB
-    if (userId && gameKey && attemptsData.length === 0) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-      if (supabaseUrl && supabaseServiceKey) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+    if (userId && gameKey && attemptsData.length === 0 && supabaseUrl && supabaseServiceKey) {
+      try {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const { data: dbAttempts } = await supabase
           .from("attempts")
@@ -99,10 +104,12 @@ serve(async (req) => {
 
         if (dbAttempts && dbAttempts.length > 0) {
           attemptsData = dbAttempts.reverse().map((a: any) => ({
-            correct: a.correct,
-            latency_ms: a.latency_ms,
+            correct: !!a.correct,
+            latency_ms: a.latency_ms || 2500,
           }));
         }
+      } catch (dbErr) {
+        console.warn("Could not query attempts from DB, using fallback calculation:", dbErr);
       }
     }
 
@@ -111,8 +118,8 @@ serve(async (req) => {
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error?.message || String(error) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
