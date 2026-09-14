@@ -78,6 +78,29 @@ const CULTURAL_IMAGES: Record<string, string[]> = {
   ],
 };
 
+const MOBILE_GAME_TOPIC_RULES: Record<string, string> = {
+  nondi: 'Hopscotch rules, boxes 1 to 8, single right foot balance, twin wings (squares 2 & 3), center pivot (square 4), peak "Pazham" (square 8), 180° turnaround jump, throwing pebble without touching lines.',
+  kanche: 'Traditional Indian marbles (Goli Gundugal), ruby red / emerald green cat-eye / crystal marbles, center target pit in circle, thumb flicking release technique, ring boundaries.',
+  gilli_danda: 'Traditional Gilli Danda (Kitti Pul), wooden danda stick, small tapered gilli, popping the gilli into the air, striking distance measured in danda lengths.',
+  uriyadi: 'Festival pot-breaking game (Uriyadi), clay pot filled with curd/butter/turmeric water/coins, hanging rope, blindfolded player with long bamboo stick.',
+  tyre_oattam: 'Rolling tyre with stick or wire guide, steering side taps, balancing speed and turning around village corners.',
+  pattam_viduthal: 'Traditional kite flying (Pattam Viduthal), wooden thread spool (lattai), paper and tail balancing against wind, thread tension.',
+  street_cricket: 'Galli / Street Tennis Ball Cricket, "One Tip One Hand" catching rule, neighbour boundary rules, brick wickets, gully fielding.',
+  kabaddi: 'Traditional Kabaddi / Chadukudu, raider chanting "Kabaddi" in single breath, crossing Baulk line, tagging defenders, center midline.',
+  kho_kho: 'Traditional Kho-Kho, 8 chasers sitting in center strip facing alternating opposite directions, tapping teammate back shouting "KHO!".',
+  skipping_rope: 'Traditional jumping rope / Thala Koodu, soft landing on balls of feet, rhythmic jumping songs.',
+  pallanguzhi: 'Traditional Pallanguzhi 14-pit wooden board (7 per side), cowrie shells / tamarind seeds, counter-clockwise sowing, "Pasu" (4 seeds), empty pit rules.',
+  thaayam: 'Traditional Dayakattai / Thaayam board game, brass/bronze dice, rolling "Thaayam" (1) to enter pawns, outer and inner tracks, reaching center palace.',
+  paramapadham: 'Traditional Paramapadham (Snakes and Ladders / Vaikunta Ekadasi), ladders as virtues, snakes as vices, Square 100 as Vaikunta Moksha.',
+  seettu_vilayattu: 'Traditional 52-card Rummy and card games, 4 suits, pure sequence, sets, runs, joker rules.',
+  carrom: 'Traditional Carrom board, white coins (1 pt), black coins (2 pts), red Queen (3 pts + cover coin), striker flick technique, boric powder.',
+  movie_poster_memory: 'Vintage Tamil classic cinema posters & iconic movies (Karnan, Padagotti, Server Sundaram, Veerapandiya Kattabomman), vintage costumes.',
+  ilaiyaraaja_melody: 'Maestro Ilaiyaraaja 1980s melodies, song lyrics, instruments (flute, violin, veena), singer pairings (SPB, S. Janaki, K.J. Yesudas, Chithra).',
+  actor_actress_match: 'Classic Tamil legendary actors and actresses ("Nadigaiyar Thilagam" Savitri, "Nadigar Thilagam" Sivaji Ganesan, "Makkal Thilagam" MGR, "Aachi" Manorama).',
+  cinema_ticket_counter: 'Classic single-screen cinema halls, Balcony vs First Class vs Floor seating, wooden "HOUSEFULL" signboards, interval snacks.',
+  oliyum_oliyum: 'Doordarshan Kendra Chennai 1980s-90s TV memories, Friday 7:30 PM "Oliyum Oliyum" top songs, Sunday 4:30 PM movie, newsreaders (Shobana Ravi, Varadarajan).',
+};
+
 class GroqService {
   private currentKeyIndex = 0;
   private keyPool: string[] = [...ENV_KEYS];
@@ -182,7 +205,7 @@ class GroqService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
+          model: 'llama-3.1-8b-instant',
           messages: [{ role: 'user', content: 'Say OK' }],
           max_tokens: 5,
         }),
@@ -205,8 +228,8 @@ class GroqService {
   ): Promise<{ content: string; keyIndex: number; model: string } | null> {
     await this.initialize();
     const models = preferredModel
-      ? [preferredModel, 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'groq/compound-mini']
-      : ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'groq/compound-mini', 'openai/gpt-oss-20b'];
+      ? [preferredModel, 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768']
+      : ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'llama3-70b-8192'];
 
     const validKeys = this.keyPool
       .map((k, i) => ({ key: k?.trim(), index: i }))
@@ -356,14 +379,16 @@ ANALYSIS_JSON:{"extractedMemory":{"hasMemory":boolean,"title":"short title","con
   ): Promise<GameItem[]> {
     await this.initialize();
 
-    const profileCtx = elderProfile
-      ? `The elder's hometown: ${elderProfile.hometown || 'Tamil Nadu'}. Hobbies: ${elderProfile.hobbies || 'traditional games, music'}.`
-      : '';
+    const normalizedKey = (gameKey || '').toLowerCase().replace(/-/g, '_');
+    const topicRule = MOBILE_GAME_TOPIC_RULES[normalizedKey] || `Rules, terms, and gameplay mechanics of ${gameTitle}`;
 
     const systemPrompt = `You are a memory quiz master creating questions for an elderly Tamil person playing the specific traditional game: "${gameTitle}" (key: ${gameKey}).
+
+GAME TOPIC RULES & DETAILS FOR "${gameTitle}":
+${topicRule}
+
 STRICT RULE: Every single question MUST be strictly, directly, and specifically about the rules, mechanics, squares/steps, board positions, throwing/hopping/striking moves, and terms of THE GAME "${gameTitle}" (${gameKey}).
-Do NOT generate questions about any other games, other sports, or generic village trivia.
-${profileCtx}
+Do NOT generate questions about any other games, other sports, food, or generic trivia.
 Generate exactly ${count} unique, nostalgic, culturally authentic multiple-choice questions specifically for "${gameTitle}".
 Respond ONLY with a valid JSON array:
 [{"prompt":"question text specifically about ${gameTitle}","answer":"correct answer","choices":["choice 1","choice 2","choice 3","choice 4"],"emoji":"single emoji","explanation":"brief warm explanation"}]

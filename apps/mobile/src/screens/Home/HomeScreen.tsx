@@ -14,11 +14,13 @@ interface Props {
   onEmergency: () => void;
   language?: string;
   highContrast?: boolean;
+  userName?: string;
 }
 
-export default function HomeScreen({ onNavigate, onOpenGames, onEmergency, language = 'ta', highContrast }: Props) {
+export default function HomeScreen({ onNavigate, onOpenGames, onEmergency, language = 'ta', highContrast, userName }: Props) {
   const colors = highContrast ? THEME.highContrastColors : THEME.colors;
   const isTamil = language === 'ta';
+  const displayName = userName || (isTamil ? 'தாத்தா / பாட்டி' : 'Dear Grandparent');
   const [sparkDone, setSparkDone] = useState(false);
 
   const handleCallFamily = () => {
@@ -46,7 +48,7 @@ export default function HomeScreen({ onNavigate, onOpenGames, onEmergency, langu
           <Image source={require('../../../assets/logo.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
           <View style={{ flex: 1 }}>
             <Text style={[styles.greetingTitle, { color: colors.textPrimary }]}>
-              {isTamil ? 'வணக்கம், லட்சுமி அம்மா & தாத்தா!' : 'Welcome, Lakshmi Amma & Thatha!'}
+              {isTamil ? `வணக்கம், ${displayName}!` : `Welcome, ${displayName}!`}
             </Text>
             <Text style={[styles.greetingSub, { color: colors.textSecondary }]}>
               {isTamil

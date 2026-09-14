@@ -480,10 +480,22 @@ export const databaseService = {
   // ── 2. Medical Reports ──
   async getMedicalReports(elderId: string): Promise<MedicalReport[]> {
     const storageKey = `medical_reports_${elderId}`;
-    const cached = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    if (cached.length > 0) return cached;
+    const cached = localStorage.getItem(storageKey);
+    if (cached !== null) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        return [];
+      }
+    }
 
-    // Seed default starter reports if empty
+    // Only seed sample reports for explicit demo accounts so new registrations start clean
+    const isDemoAccount = !elderId || elderId === 'elder_demo_1' || elderId === 'elder_demo_2' || elderId.includes('demo');
+    if (!isDemoAccount) {
+      localStorage.setItem(storageKey, JSON.stringify([]));
+      return [];
+    }
+
     const defaults: MedicalReport[] = [
       {
         id: 'rep_1',
@@ -750,10 +762,12 @@ export const databaseService = {
     return defaults;
   },
 
-  async addMemory(elderId: string, memory: { title: string; content: string; image_url?: string; tags?: string[]; uploaded_by?: string }): Promise<any> {
+  async addMemory(elderId: string, memory: { title: string; content: string; image_url?: string; tags?: string[]; uploaded_by?: string; user_id?: string }): Promise<any> {
     const newMem = {
       ...memory,
       id: `mem_${Date.now()}`,
+      elder_id: elderId,
+      user_id: memory.user_id || elderId,
       type: memory.image_url ? 'PHOTO' : 'STORY',
       created_at: new Date().toISOString(),
     };
@@ -888,6 +902,57 @@ export const databaseService = {
   async getElderPersonalFacts(elderId: string): Promise<any[]> {
     const storageKey = `elder_personal_facts_${elderId}`;
     return JSON.parse(localStorage.getItem(storageKey) || '[]');
+  },
+
+  // ── 9. Game Attempts & Cognitive Score Persistence ──
+  async submitGameAttempt(attempt: {
+    userId?: string;
+    gameKey?: string;
+    score: number;
+    accuracy?: number;
+    completed?: boolean;
+    timeTakenSeconds?: number;
+  }): Promise<any> {
+    const attemptRecord = {
+      id: `attempt_${Date.now()}`,
+      user_id: attempt.userId || 'current_user',
+      game_key: attempt.gameKey || 'unknown_game',
+      score: attempt.score,
+      accuracy: attempt.accuracy ?? attempt.score,
+      completed: attempt.completed ?? true,
+      time_taken: attempt.timeTakenSeconds || 60,
+      created_at: new Date().toISOString(),
+    };
+
+    const storageKey = `game_attempts_${attempt.userId || 'default'}`;
+    try {
+      const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      existing.unshift(attemptRecord);
+      localStorage.setItem(storageKey, JSON.stringify(existing.slice(0, 100)));
+    } catch {
+      // Ignore localStorage error
+    }
+
+    if (SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+      try {
+        await fetch(`${SUPABASE_CONFIG.url}/rest/v1/attempts`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_CONFIG.anonKey,
+            'Authorization': `Bearer ${localStorage.getItem('granny_token') || SUPABASE_CONFIG.anonKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            correct: (attempt.accuracy ?? attempt.score) >= 50,
+            latency_ms: (attempt.timeTakenSeconds || 5) * 1000,
+          }),
+        });
+      } catch (dbErr) {
+        // Silently handle DB offline mode
+      }
+    }
+
+    return attemptRecord;
   }
 };
 

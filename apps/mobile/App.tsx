@@ -24,28 +24,31 @@ import GamesScreen from './src/screens/Games/GamesScreen';
 import RemindersScreen from './src/screens/Health/RemindersScreen';
 import MemoryScreen from './src/screens/Memory/MemoryScreen';
 import CaregiverScreen from './src/screens/Family/CaregiverScreen';
+import SettingsScreen from './src/screens/Settings/SettingsScreen';
 import { audioService } from './src/services/audioService';
-import { supabaseAuth } from './src/services/supabaseService';
+import { supabaseAuth, databaseService } from './src/services/supabaseService';
 
 interface MobileUser {
   id: string;
   name: string;
+  email?: string;
   role: 'ELDER' | 'CAREGIVER';
   language: string;
 }
 
-type ElderTab = 'home' | 'companion' | 'games' | 'memory' | 'health';
+type ElderTab = 'home' | 'companion' | 'games' | 'memory' | 'health' | 'settings';
 
 export default function App() {
   const [user, setUser] = useState<MobileUser | null>(null);
+  const [language, setLanguage] = useState<'ta' | 'en'>('ta');
+  const [highContrast, setHighContrast] = useState(false);
   const [activeElderTab, setActiveElderTab] = useState<ElderTab>('home');
   const [inGamesLibrary, setInGamesLibrary] = useState(false);
-  const [language, setLanguage] = useState<'en' | 'ta'>('ta');
-  const [highContrast, setHighContrast] = useState(false);
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [healthDrawerVisible, setHealthDrawerVisible] = useState(false);
 
   useEffect(() => {
+    // Restore saved session from AsyncStorage
     supabaseAuth.loadPersistedAuth().then(persisted => {
       if (persisted?.user) {
         setUser(persisted.user);
@@ -62,6 +65,18 @@ export default function App() {
   const handleEmergencySos = () => {
     audioService.playSosSiren();
     setSosModalVisible(true);
+    if (user?.id) {
+      databaseService.addCaretakerNotification(user.id, {
+        elder_id: user.id,
+        elder_name: user.name || 'Elder',
+        type: 'DISTRESS',
+        severity: 'URGENT',
+        title: '🚨 EMERGENCY SOS ACTIVATED',
+        message: `Emergency SOS button pressed by ${user.name || 'Elder'} on mobile app at ${new Date().toLocaleTimeString()}.`,
+        email_sent: true,
+        is_read: false,
+      }).catch(() => {});
+    }
   };
 
   const handleDismissSos = () => {
@@ -158,7 +173,7 @@ export default function App() {
       <View style={[styles.appBar, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Image source={require('./assets/logo.png')} style={{ width: 32, height: 32 }} resizeMode="contain" />
-          <Image source={require('./assets/title.png')} style={{ width: 85, height: 24 }} resizeMode="contain" />
+          <Image source={require('./assets/title.png')} style={{ width: 80, height: 22 }} resizeMode="contain" />
           <View style={[styles.rolePill, { backgroundColor: isElder ? colors.primaryLight : colors.secondaryLight }]}>
             <Text style={[styles.rolePillText, { color: isElder ? colors.primary : colors.secondaryDark }]}>
               {isElder ? (isTamil ? 'முதியோர்' : 'Elder') : (isTamil ? 'பராமரிப்பாளர்' : 'Caregiver')}
@@ -195,13 +210,13 @@ export default function App() {
             <Text style={{ fontSize: 13 }}>{highContrast ? '☀️' : '👁️'}</Text>
           </TouchableOpacity>
 
-          {/* Exit / Switch Role */}
+          {/* Direct Sign Out / Log Out Button */}
           <TouchableOpacity
             style={[styles.exitBtn, { backgroundColor: '#FEE2E2' }]}
             onPress={handleLogout}
           >
             <Text style={[styles.exitBtnText, { color: '#DC2626' }]}>
-              {isTamil ? 'வெளியேறு' : 'Exit'}
+              🚪 {isTamil ? 'வெளியேறு' : 'Sign Out'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -235,16 +250,27 @@ export default function App() {
               onEmergency={handleEmergencySos}
               language={language}
               highContrast={highContrast}
+              userName={user.name}
             />
           ) : activeElderTab === 'companion' ? (
-            <CompanionScreen userId={user.id} language={language} highContrast={highContrast} />
+            <CompanionScreen userId={user.id} userName={user.name} language={language} highContrast={highContrast} />
           ) : activeElderTab === 'memory' ? (
             <MemoryScreen userId={user.id} language={language} highContrast={highContrast} />
+          ) : activeElderTab === 'settings' ? (
+            <SettingsScreen
+              user={user}
+              language={language}
+              onToggleLanguage={toggleLanguage}
+              highContrast={highContrast}
+              onToggleHighContrast={toggleHighContrast}
+              onLogout={handleLogout}
+              onBack={() => setActiveElderTab('home')}
+            />
           ) : (
             <RemindersScreen highContrast={highContrast} />
           )
         ) : (
-          <CaregiverScreen language={language} highContrast={highContrast} />
+          <CaregiverScreen language={language} highContrast={highContrast} onLogout={handleLogout} />
         )}
       </View>
 
@@ -288,7 +314,7 @@ export default function App() {
           >
             <Text style={styles.navEmoji}>🧩</Text>
             <Text style={[styles.navLabel, { color: inGamesLibrary ? colors.primary : colors.textSecondary }]}>
-              {isTamil ? 'விளையாட்டுகள்' : '20 Games'}
+              {isTamil ? 'ஆட்டங்கள்' : '20 Games'}
             </Text>
           </TouchableOpacity>
 
@@ -309,13 +335,14 @@ export default function App() {
           <TouchableOpacity
             style={styles.navItem}
             onPress={() => {
-              audioService.playMedicineAlertChime();
-              setHealthDrawerVisible(true);
+              audioService.playTapSound();
+              setInGamesLibrary(false);
+              setActiveElderTab('settings');
             }}
           >
-            <Text style={styles.navEmoji}>💊</Text>
-            <Text style={[styles.navLabel, { color: colors.textSecondary }]}>
-              {isTamil ? 'மருந்து' : 'Health'}
+            <Text style={styles.navEmoji}>⚙️</Text>
+            <Text style={[styles.navLabel, { color: activeElderTab === 'settings' ? colors.primary : colors.textSecondary }]}>
+              {isTamil ? 'அமைப்புகள்' : 'Settings'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -330,31 +357,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
   },
   logo: { fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
-  rolePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  rolePillText: { fontSize: 11, fontWeight: '800' },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sosTopBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  sosTopBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
-  langBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
-  langBtnText: { fontSize: 12, fontWeight: '800' },
-  contrastBtn: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  exitBtn: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8 },
+  rolePill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  rolePillText: { fontSize: 10, fontWeight: '800' },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sosTopBtn: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  sosTopBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '900' },
+  langBtn: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
+  langBtnText: { fontSize: 11, fontWeight: '800' },
+  contrastBtn: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  exitBtn: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
   exitBtnText: { fontSize: 11, fontWeight: '800' },
   content: { flex: 1 },
   bottomNav: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 10,
+    paddingVertical: 8,
+    paddingBottom: 12,
     borderTopWidth: 1,
   },
-  navItem: { alignItems: 'center', minWidth: 60 },
-  navEmoji: { fontSize: 22 },
-  navLabel: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+  navItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  navEmoji: { fontSize: 20 },
+  navLabel: { fontSize: 10, fontWeight: '700', marginTop: 2, textAlign: 'center' },
   drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: 1 },
   drawerCloseBtn: { minWidth: 60 },
   drawerCloseText: { fontSize: 16, fontWeight: '800' },

@@ -94,19 +94,29 @@ serve(async (req: Request) => {
     if (userId && gameKey && attemptsData.length === 0 && supabaseUrl && supabaseServiceKey) {
       try {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
-        const { data: dbAttempts } = await supabase
-          .from("attempts")
-          .select("correct, latency_ms, game_sessions!inner(user_id, game_key)")
-          .eq("game_sessions.user_id", userId)
-          .eq("game_sessions.game_key", gameKey)
-          .order("created_at", { ascending: false })
-          .limit(8);
+        const { data: sessions } = await supabase
+          .from("game_sessions")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("game_key", gameKey)
+          .order("started_at", { ascending: false })
+          .limit(5);
 
-        if (dbAttempts && dbAttempts.length > 0) {
-          attemptsData = dbAttempts.reverse().map((a: any) => ({
-            correct: !!a.correct,
-            latency_ms: a.latency_ms || 2500,
-          }));
+        if (sessions && sessions.length > 0) {
+          const sessionIds = sessions.map((s: any) => s.id);
+          const { data: dbAttempts } = await supabase
+            .from("attempts")
+            .select("correct, latency_ms")
+            .in("session_id", sessionIds)
+            .order("created_at", { ascending: false })
+            .limit(8);
+
+          if (dbAttempts && dbAttempts.length > 0) {
+            attemptsData = dbAttempts.reverse().map((a: any) => ({
+              correct: !!a.correct,
+              latency_ms: a.latency_ms || 2500,
+            }));
+          }
         }
       } catch (dbErr) {
         console.warn("Could not query attempts from DB, using fallback calculation:", dbErr);

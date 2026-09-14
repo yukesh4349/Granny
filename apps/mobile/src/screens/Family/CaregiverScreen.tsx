@@ -17,10 +17,12 @@ import {
 } from 'react-native';
 import { THEME } from '../../constants/theme';
 import { audioService } from '../../services/audioService';
+import { databaseService } from '../../services/supabaseService';
 
 interface Props {
   language?: string;
   highContrast?: boolean;
+  onLogout?: () => void;
 }
 
 interface LinkedElder {
@@ -68,7 +70,7 @@ interface HealthAlertItem {
   status: 'PENDING' | 'RESOLVED';
 }
 
-export default function CaregiverScreen({ language = 'en', highContrast }: Props) {
+export default function CaregiverScreen({ language = 'en', highContrast, onLogout }: Props) {
   const colors = highContrast ? THEME.highContrastColors : THEME.colors;
   const isTamil = language === 'ta';
 
@@ -178,6 +180,51 @@ export default function CaregiverScreen({ language = 'en', highContrast }: Props
   // SOS Simulation Overlay
   const [sosActive, setSosActive] = useState(false);
 
+  // Load real records from databaseService
+  useEffect(() => {
+    if (!activeElder?.id) return;
+
+    // 1. Fetch live reminders
+    databaseService.getReminders(activeElder.id).then(dbReminders => {
+      if (dbReminders && dbReminders.length > 0) {
+        setAlarms(dbReminders.map(r => ({
+          id: r.id,
+          title: r.title,
+          time: r.time_of_day,
+          type: (r.type as any) || 'MEDICATION',
+          takenToday: !!r.confirmed,
+        })));
+      }
+    }).catch(() => {});
+
+    // 2. Fetch live health alerts / notifications
+    databaseService.getCaretakerNotifications(activeElder.id).then(notifs => {
+      if (notifs && notifs.length > 0) {
+        setHealthAlerts(notifs.map(n => ({
+          id: n.id,
+          timestamp: new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          symptom: n.title,
+          severity: (n.severity as any) || 'MEDIUM',
+          transcriptExcerpt: n.message || n.transcript_excerpt || '',
+          status: n.is_read ? 'RESOLVED' : 'PENDING',
+        })));
+      }
+    }).catch(() => {});
+
+    // 3. Fetch live medical reports
+    databaseService.getMedicalReports(activeElder.id).then(reps => {
+      if (reps && reps.length > 0) {
+        setReports(reps.map(r => ({
+          id: r.id,
+          title: r.title,
+          doctor: r.doctor_name,
+          date: r.report_date,
+          summary: r.summary || r.notes || '',
+        })));
+      }
+    }).catch(() => {});
+  }, [activeElder?.id]);
+
   const handleTriggerCaregiverSosAlert = () => {
     setSosActive(true);
     audioService.playSosSiren();
@@ -188,32 +235,59 @@ export default function CaregiverScreen({ language = 'en', highContrast }: Props
     setSosActive(false);
   };
 
-  const handleLinkNewElder = () => {
+  const handleLinkNewElder = async () => {
     if (!linkCodeInput.trim()) {
       Alert.alert('Error', isTamil ? 'இணைப்பு குறியீட்டை உள்ளிடவும்' : 'Please enter 6-character link code (e.g., GRN-1234)');
       return;
     }
-    const newElder: LinkedElder = {
-      id: `elder_${Date.now()}`,
-      name: elderNameInput.trim() || `Elder (${linkCodeInput.toUpperCase()})`,
-      linkCode: linkCodeInput.toUpperCase().trim(),
-      status: 'ONLINE',
-      lastActive: 'Just now',
-      age: 75,
-      hometown: 'Tamil Nadu',
-      totalTimeSpentMinutes: 0,
-      gameTimeLimitMinutes: 45,
-    };
-    setLinkedElders([...linkedElders, newElder]);
-    setSelectedElderId(newElder.id);
-    setLinkCodeInput('');
-    setElderNameInput('');
-    Alert.alert(
-      isTamil ? 'வெற்றி' : 'Account Linked',
-      isTamil
-        ? `முதியோர் கணக்கு (${newElder.name}) வெற்றிகரமாக இணைக்கப்பட்டது!`
-        : `Successfully linked and mapped to ${newElder.name}!`
-    );
+    const cleanCode = linkCodeInput.toUpperCase().trim();
+    try {
+      const result = await databaseService.linkElderByCode(cleanCode);
+      const newElder: LinkedElder = {
+        id: result.elderId,
+        name: elderNameInput.trim() || result.elderName,
+        linkCode: cleanCode,
+        status: 'ONLINE',
+        lastActive: 'Just now',
+        age: 75,
+        hometown: 'Tamil Nadu',
+        totalTimeSpentMinutes: 0,
+        gameTimeLimitMinutes: 45,
+      };
+      setLinkedElders([...linkedElders, newElder]);
+      setSelectedElderId(newElder.id);
+      setLinkCodeInput('');
+      setElderNameInput('');
+      Alert.alert(
+        isTamil ? 'வெற்றி' : 'Account Linked',
+        isTamil
+          ? `முதியோர் கணக்கு (${newElder.name}) வெற்றிகரமாக இணைக்கப்பட்டது!`
+          : `Successfully linked and mapped to ${newElder.name}!`
+      );
+    } catch {
+      // Offline / Local link fallback
+      const fallbackElder: LinkedElder = {
+        id: `elder_${Date.now()}`,
+        name: elderNameInput.trim() || `Elder (${cleanCode})`,
+        linkCode: cleanCode,
+        status: 'ONLINE',
+        lastActive: 'Just now',
+        age: 75,
+        hometown: 'Tamil Nadu',
+        totalTimeSpentMinutes: 0,
+        gameTimeLimitMinutes: 45,
+      };
+      setLinkedElders([...linkedElders, fallbackElder]);
+      setSelectedElderId(fallbackElder.id);
+      setLinkCodeInput('');
+      setElderNameInput('');
+      Alert.alert(
+        isTamil ? 'வெற்றி' : 'Account Linked',
+        isTamil
+          ? `முதியோர் கணக்கு (${fallbackElder.name}) இணைக்கப்பட்டது!`
+          : `Linked to ${fallbackElder.name}!`
+      );
+    }
   };
 
   const handleSaveGameLimit = (limitMinutes: number) => {
@@ -228,7 +302,7 @@ export default function CaregiverScreen({ language = 'en', highContrast }: Props
     );
   };
 
-  const handleAddAlarm = () => {
+  const handleAddAlarm = async () => {
     if (!alarmTitle.trim()) return;
     const newAl: AlarmItem = {
       id: `al_${Date.now()}`,
@@ -241,10 +315,23 @@ export default function CaregiverScreen({ language = 'en', highContrast }: Props
     setAlarmTitle('');
     setShowAddAlarm(false);
     audioService.playMedicineAlertChime();
+
+    // Persist to databaseService
+    if (activeElder?.id) {
+      await databaseService.addReminder({
+        elder_id: activeElder.id,
+        title: newAl.title,
+        type: newAl.type === 'ACTIVITY' ? 'EXERCISE' : (newAl.type === 'SLEEP' ? 'CUSTOM' : (newAl.type as any)),
+        time_of_day: newAl.time,
+        is_active: true,
+        confirmed: false,
+      }).catch(() => {});
+    }
+
     Alert.alert('Success', 'Alarm scheduled on Elder sanctuary screen!');
   };
 
-  const handleAddReport = () => {
+  const handleAddReport = async () => {
     if (!reportTitle.trim()) return;
     const newRep: MedicalReportItem = {
       id: `rep_${Date.now()}`,
@@ -258,6 +345,19 @@ export default function CaregiverScreen({ language = 'en', highContrast }: Props
     setDoctorName('');
     setReportSummary('');
     setShowAddReport(false);
+
+    // Persist to databaseService
+    if (activeElder?.id) {
+      await databaseService.addMedicalReport({
+        elder_id: activeElder.id,
+        title: newRep.title,
+        doctor_name: newRep.doctor,
+        report_date: newRep.date,
+        category: 'Prescription',
+        summary: newRep.summary,
+      }).catch(() => {});
+    }
+
     Alert.alert('Success', 'Medical report saved and synced!');
   };
 
@@ -314,9 +414,21 @@ export default function CaregiverScreen({ language = 'en', highContrast }: Props
           <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
             {isTamil ? 'கண்காணிக்கப்படும் முதியோர்:' : 'Monitoring Elder:'}
           </Text>
-          <TouchableOpacity onPress={handleTriggerCaregiverSosAlert}>
-            <Text style={styles.testSosText}>🚨 {isTamil ? 'SOS சோதனை' : 'Test SOS'}</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity onPress={handleTriggerCaregiverSosAlert}>
+              <Text style={styles.testSosText}>🚨 {isTamil ? 'SOS சோதனை' : 'Test SOS'}</Text>
+            </TouchableOpacity>
+            {onLogout && (
+              <TouchableOpacity
+                onPress={onLogout}
+                style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}
+              >
+                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '800' }}>
+                  🚪 {isTamil ? 'வெளியேறு' : 'Log Out'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>

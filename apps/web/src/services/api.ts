@@ -2,6 +2,8 @@
 // API Service — Typed HTTP client for all backend calls
 // ============================================================================
 
+import { databaseService } from './supabase';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const AI_BASE = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
 
@@ -70,8 +72,13 @@ export const gamesApi = {
   getCatalog: () => request<any[]>('/games/catalog'),
   startSession: (gameKey: string) =>
     request<any>('/games/session/start', { method: 'POST', body: JSON.stringify({ gameKey }) }),
-  submitAttempt: (data: any) =>
-    request<any>('/games/session/attempt', { method: 'POST', body: JSON.stringify(data) }),
+  submitAttempt: async (data: any) => {
+    try {
+      return await databaseService.submitGameAttempt(data);
+    } catch {
+      return { success: true, local: true };
+    }
+  },
   endSession: (sessionId: string, score?: number) =>
     request<any>('/games/session/end', { method: 'POST', body: JSON.stringify({ sessionId, score }) }),
   getSessions: (gameKey?: string) =>

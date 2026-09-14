@@ -1036,8 +1036,10 @@ export default function App() {
                   const val = e.target.value;
                   if (val.includes('@')) {
                     setAuthForm({ ...authForm, email: val, phone: '' });
+                  } else if (/^\+?[0-9\s-]*$/.test(val)) {
+                    setAuthForm({ ...authForm, email: '', phone: val });
                   } else {
-                    setAuthForm({ ...authForm, email: val, phone: val });
+                    setAuthForm({ ...authForm, email: val, phone: '' });
                   }
                 }}
                 required

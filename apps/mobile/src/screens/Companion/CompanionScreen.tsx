@@ -21,6 +21,7 @@ import { databaseService } from '../../services/supabaseService';
 
 interface Props {
   userId?: string;
+  userName?: string;
   language?: 'en' | 'ta';
   highContrast?: boolean;
 }
@@ -35,9 +36,10 @@ interface ChatMessage {
   healthAlert?: boolean;
 }
 
-export default function CompanionScreen({ userId = 'demo_user', language = 'ta', highContrast }: Props) {
+export default function CompanionScreen({ userId = 'demo_user', userName, language = 'ta', highContrast }: Props) {
   const colors = highContrast ? THEME.highContrastColors : THEME.colors;
   const isTamil = language === 'ta';
+  const displayName = userName || (isTamil ? 'தாத்தா / பாட்டி' : 'Dear Grandparent');
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -45,8 +47,8 @@ export default function CompanionScreen({ userId = 'demo_user', language = 'ta',
       id: 'welcome_1',
       role: 'assistant',
       text: isTamil
-        ? 'வணக்கம் லட்சுமி அம்மா! நான் உங்கள் ஆஷா. இன்று உங்கள் நாள் எப்படி இருக்கிறது? உங்கள் பழைய நினைவுகள் அல்லது பாடல்களைப் பற்றி பேசுவோமா? 🌸'
-        : 'Good day Lakshmi Amma! I am Asha, your memory companion. How are you feeling today? Shall we reminisce or listen to a sweet tune? 🌸',
+        ? `வணக்கம் ${displayName}! நான் உங்கள் ஆஷா. இன்று உங்கள் நாள் எப்படி இருக்கிறது? உங்கள் பழைய நினைவுகள் அல்லது பாடல்களைப் பற்றி பேசுவோமா? 🌸`
+        : `Good day ${displayName}! I am Asha, your memory companion. How are you feeling today? Shall we reminisce or listen to a sweet tune? 🌸`,
       timestamp: 'Just now',
     },
   ]);
@@ -92,7 +94,7 @@ export default function CompanionScreen({ userId = 'demo_user', language = 'ta',
         text,
         historyPayload,
         {
-          name: 'Lakshmi Amma & Ramanathan Thatha',
+          name: displayName,
           hometown: 'Madurai / Chennai, Tamil Nadu',
           hobbies: 'Carnatic music, traditional cooking, kolam, gardening',
           favoriteArtists: 'M.S. Subbulakshmi, Ilaiyaraaja, K.B. Sundarambal',

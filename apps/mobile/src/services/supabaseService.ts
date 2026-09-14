@@ -5,8 +5,8 @@
 
 import { storage } from './storageService';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://bultaewlicekhxdmkjxd.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_lhdXuHOWXRkuj1BuItKi4A_zA1Q_-Az';
 
 export interface AuthUserData {
   id: string;
@@ -278,6 +278,28 @@ export const databaseService = {
     if (elderUser) await supabaseAuth.saveRegisteredUser({ ...elderUser, linkCode: randomCode });
     await storage.setItem(`granny_linkcode_${elderId}`, randomCode);
     return randomCode;
+  },
+
+  async getElderLinkCode(elderId: string): Promise<string> {
+    return this.getOrGenerateLinkCode(elderId);
+  },
+
+  async generateElderLinkCode(elderId: string): Promise<string> {
+    const users = await supabaseAuth.getRegisteredUsers();
+    const elderUser = users.find((u: any) => u.id === elderId);
+    const allCodes = users.map((u: any) => u.linkCode).filter(Boolean);
+    let randomCode: string;
+    do {
+      randomCode = `GRN-${Math.floor(1000 + Math.random() * 9000)}`;
+    } while (allCodes.includes(randomCode));
+
+    if (elderUser) await supabaseAuth.saveRegisteredUser({ ...elderUser, linkCode: randomCode });
+    await storage.setItem(`granny_linkcode_${elderId}`, randomCode);
+    return randomCode;
+  },
+
+  async linkElderByCode(code: string): Promise<{ success: boolean; elderName: string; elderId: string }> {
+    return this.linkCaregiverToElder('caregiver', code);
   },
 
   async linkCaregiverToElder(caregiverId: string, code: string): Promise<{ success: boolean; elderName: string; elderId: string }> {
