@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { loadPersistedState, persistAuth, clearAuth, persistPreferences } from './store/appStore';
 import { authApi, remindersApi, memoryApi, gamesApi } from './services/api';
 import {
-  supabaseAuth, databaseService,
-  type MedicalReport, type FamilyContact, type CareNote, type ReminderItem, type CaretakerNotification
+  supabaseAuth, databaseService, DEFAULT_GAME_VIDEOS,
+  type MedicalReport, type FamilyContact, type CareNote, type ReminderItem, type CaretakerNotification, type GameVideo
 } from './services/supabase';
 import { groqService, type GroqKeySlot, type ExtractedMemory, type HealthAlertDetection } from './services/groqService';
 import {
@@ -84,6 +84,10 @@ export default function App() {
   const [memorizeDuration, setMemorizeDuration] = useState<number>(15);
   const [gameCategoryFilter, setGameCategoryFilter] = useState<'all' | 'outdoor' | 'indoor' | 'cinema'>('all');
   const [isGeneratingGame, setIsGeneratingGame] = useState(false);
+  const [gameVideos, setGameVideos] = useState<GameVideo[]>([]);
+  const [currentGameVideo, setCurrentGameVideo] = useState<GameVideo | null>(null);
+  const [selectedVideoForModal, setSelectedVideoForModal] = useState<GameVideo | null>(null);
+  const [activeMemoryTab, setActiveMemoryTab] = useState<'all' | 'photos' | 'videos'>('all');
 
   // Theatre & Micro-Intervention State
   const [theatreStep, setTheatreStep] = useState(0);
@@ -249,6 +253,9 @@ export default function App() {
     const today = new Date().toDateString();
     const stored = localStorage.getItem(`granny_game_today_minutes_${today}`);
     if (stored) setGameTodayMinutes(parseFloat(stored));
+
+    // Load heritage game videos library (10 nostalgia videos)
+    databaseService.getGameVideos().then(setGameVideos);
   }, []);
 
   // ─── Load Ecosystem Data when user changes ────────────────────────────────
@@ -731,6 +738,12 @@ export default function App() {
 
     setIsGeneratingGame(true);
     setCurrentGameKey(gameKey);
+
+    // Fetch and bind corresponding nostalgia video from DB
+    databaseService.getGameVideoByKey(gameKey).then(v => {
+      setCurrentGameVideo(v || null);
+    });
+
     navigateTo('play');
 
     try {
@@ -1606,62 +1619,93 @@ export default function App() {
             {/* Games Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '18px' }}>
               {ALL_GAMES.filter(g => {
-                if (gameCategoryFilter === 'outdoor') return ['nondi', 'kanche', 'gilli_danda', 'pallanguzhi', 'dhayakkattai', 'seven_stones', 'kabaddi_clues', 'tyre_vandi', 'kitti_pull', 'maram_kothu'].includes(g.key);
-                if (gameCategoryFilter === 'indoor') return ['thayam', 'paramapadham', 'aadupuli', 'pandi', 'stone_counting'].includes(g.key);
-                if (gameCategoryFilter === 'cinema') return ['cinema_1970', 'carnatic_raga', 'vintage_radio', 'spices_kitchen', 'temple_bells'].includes(g.key);
+                if (gameCategoryFilter === 'outdoor') return ['nondi', 'kanche', 'gilli_danda', 'uriyadi', 'tyre_oattam', 'pattam_viduthal', 'street_cricket', 'kabaddi', 'kho_kho', 'skipping_rope'].includes(g.key);
+                if (gameCategoryFilter === 'indoor') return ['pallanguzhi', 'thaayam', 'paramapadham', 'seettu_vilayattu', 'carrom'].includes(g.key);
+                if (gameCategoryFilter === 'cinema') return ['movie_poster', 'ilaiyaraaja_melody', 'actor_actress_match', 'cinema_ticket', 'oliyum_oliyum'].includes(g.key);
                 return true;
-              }).map(game => (
-                <div
-                  key={game.key}
-                  className="card card-interactive"
-                  onClick={() => startGame(game.key)}
-                  style={{
-                    backgroundColor: '#FFFFFF', borderRadius: '20px', padding: '22px',
-                    border: '2px solid var(--color-border)', display: 'flex', flexDirection: 'column',
-                    justifyContent: 'space-between', minHeight: '180px'
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '36px' }}>{game.icon}</span>
-                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)' }}>
-                        AI Customized
+              }).map(game => {
+                const hasVideo = gameVideos.some(v => v.game_key === game.key || v.game_key === game.key.replace(/_/g, ''));
+                return (
+                  <div
+                    key={game.key}
+                    className="card card-interactive"
+                    onClick={() => startGame(game.key)}
+                    style={{
+                      backgroundColor: '#FFFFFF', borderRadius: '20px', padding: '22px',
+                      border: hasVideo ? '2px solid #81C784' : '2px solid var(--color-border)',
+                      display: 'flex', flexDirection: 'column',
+                      justifyContent: 'space-between', minHeight: '190px',
+                      boxShadow: hasVideo ? '0 6px 18px rgba(76, 175, 80, 0.12)' : 'none',
+                      position: 'relative',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '38px' }}>{game.icon}</span>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {hasVideo && (
+                            <span style={{
+                              fontSize: '11px', fontWeight: 800, padding: '4px 8px', borderRadius: '8px',
+                              backgroundColor: '#E8F5E9', color: '#2E7D32', border: '1px solid #A5D6A7',
+                              display: 'inline-flex', alignItems: 'center', gap: '4px'
+                            }}>
+                              🎬 {language === 'ta' ? 'வீடியோ உண்டு' : 'Video Memory'}
+                            </span>
+                          )}
+                          <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 8px', borderRadius: '8px', backgroundColor: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)' }}>
+                            AI Dynamic
+                          </span>
+                        </div>
+                      </div>
+                      <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text)', marginTop: '12px' }}>
+                        {game.title}
+                      </h3>
+                      <p className="text-muted" style={{ fontSize: '13px', marginTop: '4px', lineHeight: 1.4 }}>
+                        {game.description}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', borderTop: '1px solid #F0F0F0', paddingTop: '10px' }}>
+                      <span style={{ fontSize: '12px', color: '#777', fontWeight: 600 }}>
+                        {hasVideo ? (language === 'ta' ? 'பழைய வீடியோவுடன் விளையாடு' : 'Plays with nostalgia video') : (language === 'ta' ? 'அறிவாற்றல் பயிற்சி' : 'Cognitive workout')}
+                      </span>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
+                        ▶ {language === 'ta' ? 'விளையாடு' : 'Play'}
                       </span>
                     </div>
-                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text)', marginTop: '10px' }}>
-                      {game.title}
-                    </h3>
-                    <p className="text-muted" style={{ fontSize: '13px', marginTop: '4px', lineHeight: 1.4 }}>
-                      {game.description}
-                    </p>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
-                      ▶ {language === 'ta' ? 'விளையாடு' : 'Play'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
 
-        {/* ─── 5. ACTIVE GAME PLAY SCREEN (With Real Cultural Images & Groq Questions) ─── */}
+        {/* ─── 5. ACTIVE GAME PLAY SCREEN (With Side Nostalgia Video & Groq Questions) ─── */}
         {page === 'play' && (
-          <div style={{ maxWidth: 740, margin: '0 auto' }}>
+          <div style={{ maxWidth: currentGameVideo ? 1100 : 760, margin: '0 auto' }}>
             <div className="page-header">
               <div className="page-header-row" style={{ justifyContent: 'space-between' }}>
                 <button className="page-header-back-btn" onClick={finishGame}>
                   ← {t('back_to_home', language)}
                 </button>
-                <button
-                  onClick={() => currentGameKey && startGame(currentGameKey)}
-                  className="btn btn-secondary"
-                  style={{ padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-full)' }}
-                  disabled={isGeneratingGame}
-                >
-                  🔄 {language === 'ta' ? 'புதிய AI கேள்விகளை உருவாக்குக' : 'Generate New Questions'}
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {currentGameVideo && (
+                    <span style={{
+                      padding: '6px 14px', borderRadius: 'var(--radius-full)',
+                      backgroundColor: '#E8F5E9', color: '#2E7D32', fontSize: '13px', fontWeight: 800,
+                      border: '1.5px solid #A5D6A7', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                    }}>
+                      🎬 {language === 'ta' ? 'நினைவூட்டல் வீடியோ இணைப்பு' : 'Nostalgia Video Active'}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => currentGameKey && startGame(currentGameKey)}
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 14px', fontSize: '12px', borderRadius: 'var(--radius-full)' }}
+                    disabled={isGeneratingGame}
+                  >
+                    🔄 {language === 'ta' ? 'புதிய AI கேள்விகளை உருவாக்குக' : 'Generate New Questions'}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1678,115 +1722,187 @@ export default function App() {
             )}
 
             {!isGeneratingGame && gameSession && (
-              <>
-                {/* Phase 1: Memorize Preview */}
-                {gamePhase === 'memorize' && (
-                  <div className="card" style={{ padding: '32px 28px', borderRadius: '24px', border: '2.5px solid var(--color-primary)', textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: 'var(--radius-full)', backgroundColor: '#E8F5E9', color: '#2E7D32', fontWeight: 800, fontSize: '14px', marginBottom: '16px' }}>
-                      ⏱️ {language === 'ta' ? `நினைவில் வைக்கவும்: ${gameTimer} வினாடிகள்` : `Memorize for: ${gameTimer} seconds`}
-                    </div>
-                    <h3 style={{ fontSize: '22px', color: 'var(--color-primary-dark)', marginBottom: '16px' }}>
-                      {language === 'ta' ? 'காட்சியை கூர்ந்து கவனியுங்கள்' : 'Observe the Cultural Clues Carefully'}
-                    </h3>
-
-                    {/* Image / Emoji Scene Showcase */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', margin: '20px 0' }}>
-                      {gameSession.items.map((item, idx) => (
-                        <div key={idx} style={{ padding: '16px', borderRadius: '16px', backgroundColor: 'var(--color-primary-bg)', border: '1px solid var(--color-border)', textAlign: 'center' }}>
-                          <span style={{ fontSize: '40px' }}>{item.metadata?.emoji || '🌸'}</span>
-                          <h4 style={{ fontSize: '15px', fontWeight: 800, marginTop: '8px', color: 'var(--color-text)' }}>
-                            {item.metadata?.object || `Clue #${idx + 1}`}
-                          </h4>
-                          {item.metadata?.imageUrl && (
-                            <img
-                              src={item.metadata.imageUrl}
-                              alt="Memory Visual"
-                              style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '12px', marginTop: '8px' }}
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    <button className="btn btn-primary btn-large" onClick={() => setGamePhase('play')} style={{ padding: '12px 28px' }}>
-                      {language === 'ta' ? 'நான் தயாராக இருக்கிறேன்! ▶' : "I'm Ready to Play! ▶"}
-                    </button>
-                  </div>
-                )}
-
-                {/* Phase 2: Play Questions */}
-                {gamePhase === 'play' && (
-                  <div className="card" style={{ padding: '32px 28px', borderRadius: '24px', border: '2px solid var(--color-primary)' }}>
-                    {/* Progress */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-primary-dark)' }}>
-                        {language === 'ta' ? 'கேள்வி' : 'Question'} {gameSession.currentItemIndex + 1} / {gameSession.items.length}
-                      </span>
-                      <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '10px', backgroundColor: '#EDE7F6', color: '#6A1B9A', fontWeight: 700 }}>
-                        ✨ Groq AI Generated
-                      </span>
-                    </div>
-
-                    {/* Current Question */}
-                    {gameSession.items[gameSession.currentItemIndex] && (
-                      <div>
-                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                          <span style={{ fontSize: '48px' }}>
-                            {gameSession.items[gameSession.currentItemIndex].metadata?.emoji || '🧩'}
-                          </span>
-                          <h3 style={{ fontSize: '20px', color: 'var(--color-text)', marginTop: '10px', lineHeight: 1.5 }}>
-                            {gameSession.items[gameSession.currentItemIndex].prompt}
-                          </h3>
-                        </div>
-
-                        {/* 4 Accessible Choices */}
-                        <div className="stack" style={{ gap: '12px', marginTop: '20px' }}>
-                          {gameSession.items[gameSession.currentItemIndex].choices?.map((choice, i) => (
-                            <button
-                              key={i}
-                              className="btn btn-secondary btn-large"
-                              onClick={() => handleGameAnswer(choice)}
-                              style={{
-                                padding: '16px 20px', fontSize: '17px', fontWeight: 700,
-                                textAlign: 'left', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '12px'
-                              }}
-                            >
-                              <span style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '13px' }}>
-                                {['A', 'B', 'C', 'D'][i]}
-                              </span>
-                              <span>{choice}</span>
-                            </button>
-                          ))}
-                        </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: currentGameVideo ? 'minmax(320px, 1fr) minmax(300px, 380px)' : '1fr',
+                gap: '24px',
+                alignItems: 'start'
+              }}>
+                {/* ── LEFT COLUMN: Interactive Game Engine ── */}
+                <div>
+                  {/* Phase 1: Memorize Preview */}
+                  {gamePhase === 'memorize' && (
+                    <div className="card" style={{ padding: '32px 28px', borderRadius: '24px', border: '2.5px solid var(--color-primary)', textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: 'var(--radius-full)', backgroundColor: '#E8F5E9', color: '#2E7D32', fontWeight: 800, fontSize: '14px', marginBottom: '16px' }}>
+                        ⏱️ {language === 'ta' ? `நினைவில் வைக்கவும்: ${gameTimer} வினாடிகள்` : `Memorize for: ${gameTimer} seconds`}
                       </div>
-                    )}
-                  </div>
-                )}
+                      <h3 style={{ fontSize: '22px', color: 'var(--color-primary-dark)', marginBottom: '16px' }}>
+                        {language === 'ta' ? 'காட்சியை கூர்ந்து கவனியுங்கள்' : 'Observe the Cultural Clues Carefully'}
+                      </h3>
 
-                {/* Phase 3: Result Summary */}
-                {gamePhase === 'result' && (
-                  <div className="card text-center" style={{ padding: '40px 28px', borderRadius: '24px', border: '2.5px solid var(--color-success)' }}>
-                    <div style={{ fontSize: 72 }}>🌟</div>
-                    <h2 style={{ fontSize: '26px', color: 'var(--color-success)', marginTop: '8px' }}>
-                      {language === 'ta' ? 'அருமையான விளையாட்டு!' : 'Splendid Memory Session!'}
-                    </h2>
-                    <p style={{ fontSize: '16px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
-                      {language === 'ta'
-                        ? `நீங்கள் ${gameSession.attempts.filter(a => a.correct).length} / ${gameSession.items.length} கேள்விகளுக்கு சரியாக பதிலளித்துள்ளீர்கள்.`
-                        : `You answered ${gameSession.attempts.filter(a => a.correct).length} out of ${gameSession.items.length} questions correctly.`}
-                    </p>
+                      {/* Image / Emoji Scene Showcase */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', margin: '20px 0' }}>
+                        {gameSession.items.map((item, idx) => (
+                          <div key={idx} style={{ padding: '16px', borderRadius: '16px', backgroundColor: 'var(--color-primary-bg)', border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                            <span style={{ fontSize: '40px' }}>{item.metadata?.emoji || '🌸'}</span>
+                            <h4 style={{ fontSize: '15px', fontWeight: 800, marginTop: '8px', color: 'var(--color-text)' }}>
+                              {item.metadata?.object || `Clue #${idx + 1}`}
+                            </h4>
+                            {item.metadata?.imageUrl && (
+                              <img
+                                src={item.metadata.imageUrl}
+                                alt="Memory Visual"
+                                style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '12px', marginTop: '8px' }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
 
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '28px' }}>
-                      <button className="btn btn-primary btn-large" onClick={() => currentGameKey && startGame(currentGameKey)} style={{ padding: '12px 24px' }}>
-                        🔄 {language === 'ta' ? 'மீண்டும் விளையாடு' : 'Play Fresh Round'}
+                      <button className="btn btn-primary btn-large" onClick={() => setGamePhase('play')} style={{ padding: '12px 28px' }}>
+                        {language === 'ta' ? 'நான் தயாராக இருக்கிறேன்! ▶' : "I'm Ready to Play! ▶"}
                       </button>
-                      <button className="btn btn-secondary btn-large" onClick={finishGame} style={{ padding: '12px 24px' }}>
-                        {t('back_to_home', language)}
-                      </button>
+                    </div>
+                  )}
+
+                  {/* Phase 2: Play Questions */}
+                  {gamePhase === 'play' && (
+                    <div className="card" style={{ padding: '32px 28px', borderRadius: '24px', border: '2px solid var(--color-primary)' }}>
+                      {/* Progress */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-primary-dark)' }}>
+                          {language === 'ta' ? 'கேள்வி' : 'Question'} {gameSession.currentItemIndex + 1} / {gameSession.items.length}
+                        </span>
+                        <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '10px', backgroundColor: '#EDE7F6', color: '#6A1B9A', fontWeight: 700 }}>
+                          ✨ Groq AI Generated
+                        </span>
+                      </div>
+
+                      {/* Current Question */}
+                      {gameSession.items[gameSession.currentItemIndex] && (
+                        <div>
+                          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <span style={{ fontSize: '48px' }}>
+                              {gameSession.items[gameSession.currentItemIndex].metadata?.emoji || '🧩'}
+                            </span>
+                            <h3 style={{ fontSize: '20px', color: 'var(--color-text)', marginTop: '10px', lineHeight: 1.5 }}>
+                              {gameSession.items[gameSession.currentItemIndex].prompt}
+                            </h3>
+                          </div>
+
+                          {/* 4 Accessible Choices */}
+                          <div className="stack" style={{ gap: '12px', marginTop: '20px' }}>
+                            {gameSession.items[gameSession.currentItemIndex].choices?.map((choice, i) => (
+                              <button
+                                key={i}
+                                className="btn btn-secondary btn-large"
+                                onClick={() => handleGameAnswer(choice)}
+                                style={{
+                                  padding: '16px 20px', fontSize: '17px', fontWeight: 700,
+                                  textAlign: 'left', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '12px'
+                                }}
+                              >
+                                <span style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '13px' }}>
+                                  {['A', 'B', 'C', 'D'][i]}
+                                </span>
+                                <span>{choice}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Phase 3: Result Summary */}
+                  {gamePhase === 'result' && (
+                    <div className="card text-center" style={{ padding: '40px 28px', borderRadius: '24px', border: '2.5px solid var(--color-success)' }}>
+                      <div style={{ fontSize: 72 }}>🌟</div>
+                      <h2 style={{ fontSize: '26px', color: 'var(--color-success)', marginTop: '8px' }}>
+                        {language === 'ta' ? 'அருமையான விளையாட்டு!' : 'Splendid Memory Session!'}
+                      </h2>
+                      <p style={{ fontSize: '16px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
+                        {language === 'ta'
+                          ? `நீங்கள் ${gameSession.attempts.filter(a => a.correct).length} / ${gameSession.items.length} கேள்விகளுக்கு சரியாக பதிலளித்துள்ளீர்கள்.`
+                          : `You answered ${gameSession.attempts.filter(a => a.correct).length} out of ${gameSession.items.length} questions correctly.`}
+                      </p>
+
+                      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}>
+                        <button className="btn btn-primary btn-large" onClick={() => currentGameKey && startGame(currentGameKey)} style={{ padding: '12px 24px' }}>
+                          🔄 {language === 'ta' ? 'மீண்டும் விளையாடு' : 'Play Fresh Round'}
+                        </button>
+                        <button className="btn btn-secondary btn-large" onClick={finishGame} style={{ padding: '12px 24px' }}>
+                          {t('back_to_home', language)}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── RIGHT COLUMN: Nostalgic Game Video Player & Memory Reel ── */}
+                {currentGameVideo && (
+                  <div className="card" style={{
+                    backgroundColor: '#FFFFFF', borderRadius: '24px', padding: '20px',
+                    border: '2px solid #81C784', boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
+                    position: 'sticky', top: '20px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '22px' }}>🎬</span>
+                        <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#2E7D32' }}>
+                          {language === 'ta' ? 'பழைய நினைவு வீடியோ' : 'Nostalgia Video Player'}
+                        </h4>
+                      </div>
+                      <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '8px', backgroundColor: '#E8F5E9', color: '#2E7D32', fontWeight: 700 }}>
+                        {language === 'ta' ? 'நினைவு மீட்டெடுப்பு' : 'Memory Jogger'}
+                      </span>
+                    </div>
+
+                    {/* HTML5 Responsive Video Player */}
+                    <div style={{
+                      position: 'relative', width: '100%', borderRadius: '16px',
+                      overflow: 'hidden', backgroundColor: '#000000',
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.2)'
+                    }}>
+                      <video
+                        key={currentGameVideo.video_url}
+                        src={currentGameVideo.video_url}
+                        controls
+                        playsInline
+                        preload="auto"
+                        style={{ width: '100%', maxHeight: '240px', display: 'block', outline: 'none', backgroundColor: '#000000' }}
+                      >
+                        <source src={currentGameVideo.video_url} type="video/mp4" />
+                        Your browser does not support HTML5 video.
+                      </video>
+                    </div>
+
+                    {/* Video Title & Nostalgic Description */}
+                    <div style={{ marginTop: '14px' }}>
+                      <h4 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text)' }}>
+                        {language === 'ta' ? currentGameVideo.title_ta : currentGameVideo.title}
+                      </h4>
+                      <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', lineHeight: 1.4 }}>
+                        {language === 'ta' ? currentGameVideo.description_ta : currentGameVideo.description}
+                      </p>
+                    </div>
+
+                    {/* Cultural Trivia & Memory Prompt */}
+                    <div style={{
+                      marginTop: '12px', padding: '12px 14px', borderRadius: '14px',
+                      backgroundColor: '#F1F8E9', border: '1px solid #C5E1A5'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: '#33691E', marginBottom: '4px' }}>
+                        <span>💡</span>
+                        <span>{language === 'ta' ? 'நினைவுப் பெட்டகம் (Reminiscence Note)' : 'Heritage Memory Note'}</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#33691E', lineHeight: 1.4 }}>
+                        {language === 'ta' ? currentGameVideo.cultural_notes_ta : currentGameVideo.cultural_notes}
+                      </p>
                     </div>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         )}
@@ -1901,7 +2017,7 @@ export default function App() {
           </>
         )}
 
-        {/* ─── 8. ELDER MEMORY ALBUM ─── */}
+        {/* ─── 8. ELDER MEMORY ALBUM & NOSTALGIA VIDEO THEATRE ─── */}
         {page === 'memory' && (
           <>
             <div className="page-header">
@@ -1912,32 +2028,158 @@ export default function App() {
               </div>
               <h2 style={{ fontSize: '28px', color: 'var(--color-primary-dark)' }}>📸 {t('memories', language)}</h2>
               <p className="text-muted" style={{ fontSize: '15px' }}>
-                {language === 'ta' ? 'குடும்ப புகைப்படங்கள் மற்றும் ஆஷா சேகரித்த நினைவுகள்' : 'Family photographs, life stories, and memories discovered by Asha AI.'}
+                {language === 'ta' ? 'குடும்ப புகைப்படங்கள் மற்றும் 10 பாரம்பரிய விளையாட்டு வீடியோ நினைவுகள்' : 'Family photographs, childhood life stories, and 10 heritage game video reels.'}
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-              {memoriesList.map(m => (
-                <div key={m.id} className="card" style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', overflow: 'hidden', padding: 0, border: '1.5px solid var(--color-border)' }}>
-                  {m.image_url && (
-                    <img src={m.image_url} alt={m.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
-                  )}
-                  <div style={{ padding: '20px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text)' }}>{m.title}</h3>
-                    <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>{m.content}</p>
-                    {m.tags && (
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px' }}>
-                        {m.tags.map((t: string) => (
-                          <span key={t} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontWeight: 700 }}>
-                            #{t}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+            {/* Memory Filter Tabs */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '22px' }}>
+              <button
+                onClick={() => setActiveMemoryTab('all')}
+                style={{
+                  padding: '10px 20px', fontSize: '14px', fontWeight: 800,
+                  backgroundColor: activeMemoryTab === 'all' ? 'var(--color-primary)' : '#FFFFFF',
+                  color: activeMemoryTab === 'all' ? '#FFFFFF' : 'var(--color-text)',
+                  border: activeMemoryTab === 'all' ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+                  borderRadius: 'var(--radius-full)', cursor: 'pointer'
+                }}
+              >
+                🌟 {language === 'ta' ? 'அனைத்தும்' : 'All Memories'} ({memoriesList.length + gameVideos.length})
+              </button>
+              <button
+                onClick={() => setActiveMemoryTab('photos')}
+                style={{
+                  padding: '10px 20px', fontSize: '14px', fontWeight: 800,
+                  backgroundColor: activeMemoryTab === 'photos' ? 'var(--color-primary)' : '#FFFFFF',
+                  color: activeMemoryTab === 'photos' ? '#FFFFFF' : 'var(--color-text)',
+                  border: activeMemoryTab === 'photos' ? '2px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+                  borderRadius: 'var(--radius-full)', cursor: 'pointer'
+                }}
+              >
+                🖼️ {language === 'ta' ? 'குடும்ப புகைப்படங்கள்' : 'Family Photos'} ({memoriesList.length})
+              </button>
+              <button
+                onClick={() => setActiveMemoryTab('videos')}
+                style={{
+                  padding: '10px 20px', fontSize: '14px', fontWeight: 800,
+                  backgroundColor: activeMemoryTab === 'videos' ? '#2E7D32' : '#FFFFFF',
+                  color: activeMemoryTab === 'videos' ? '#FFFFFF' : 'var(--color-text)',
+                  border: activeMemoryTab === 'videos' ? '2px solid #2E7D32' : '1.5px solid var(--color-border)',
+                  borderRadius: 'var(--radius-full)', cursor: 'pointer',
+                  boxShadow: activeMemoryTab === 'videos' ? '0 4px 12px rgba(46, 125, 50, 0.25)' : 'none'
+                }}
+              >
+                🎬 {language === 'ta' ? '10 விளையாட்டு வீடியோக்கள்' : '10 Traditional Game Videos'} ({gameVideos.length})
+              </button>
             </div>
+
+            {/* Videos Section */}
+            {(activeMemoryTab === 'all' || activeMemoryTab === 'videos') && (
+              <div style={{ marginBottom: '32px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '24px' }}>🎬</span>
+                  <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#2E7D32' }}>
+                    {language === 'ta' ? 'பாரம்பரிய 10 விளையாட்டு பொக்கிஷ வீடியோக்கள்' : '10 Nostalgia Traditional Game Video Memories'}
+                  </h3>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '22px' }}>
+                  {gameVideos.map(vid => (
+                    <div
+                      key={vid.id}
+                      className="card"
+                      style={{
+                        backgroundColor: '#FFFFFF', borderRadius: '22px', overflow: 'hidden',
+                        padding: 0, border: '2px solid #A5D6A7', boxShadow: '0 8px 24px rgba(0,0,0,0.05)'
+                      }}
+                    >
+                      <div style={{ position: 'relative', width: '100%', backgroundColor: '#000000' }}>
+                        <video
+                          src={vid.video_url}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          style={{ width: '100%', maxHeight: '200px', display: 'block', backgroundColor: '#000000' }}
+                        >
+                          <source src={vid.video_url} type="video/mp4" />
+                          Your browser does not support HTML5 video.
+                        </video>
+                        <span style={{
+                          position: 'absolute', top: 10, right: 10,
+                          backgroundColor: 'rgba(46, 125, 50, 0.85)', color: '#FFFFFF',
+                          padding: '4px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: 800
+                        }}>
+                          🎬 Heritage Video
+                        </span>
+                      </div>
+
+                      <div style={{ padding: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                          <h4 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text)' }}>
+                            {language === 'ta' ? vid.title_ta : vid.title}
+                          </h4>
+                          <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#E8F5E9', color: '#2E7D32', fontWeight: 700 }}>
+                            {vid.category.toUpperCase()}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
+                          {language === 'ta' ? vid.description_ta : vid.description}
+                        </p>
+
+                        <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '12px', backgroundColor: '#F9FBE7', border: '1px solid #E6EE9C', fontSize: '12px', color: '#558B2F' }}>
+                          <strong>💡 {language === 'ta' ? 'நினைவு மீட்டெடுப்பு:' : 'Memory Spark:'}</strong> {language === 'ta' ? vid.cultural_notes_ta : vid.cultural_notes}
+                        </div>
+
+                        <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => startGame(vid.game_key)}
+                            className="btn btn-primary"
+                            style={{ padding: '8px 16px', fontSize: '13px', borderRadius: 'var(--radius-full)', backgroundColor: '#2E7D32' }}
+                          >
+                            ▶ {language === 'ta' ? 'இந்த விளையாட்டை விளையாடு' : 'Play This Game'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Photos & Stories Section */}
+            {(activeMemoryTab === 'all' || activeMemoryTab === 'photos') && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '24px' }}>🖼️</span>
+                  <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--color-primary-dark)' }}>
+                    {language === 'ta' ? 'குடும்ப புகைப்படங்கள் & கதைகள்' : 'Family Life Photos & Stories'}
+                  </h3>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                  {memoriesList.map(m => (
+                    <div key={m.id} className="card" style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', overflow: 'hidden', padding: 0, border: '1.5px solid var(--color-border)' }}>
+                      {m.image_url && (
+                        <img src={m.image_url} alt={m.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                      )}
+                      <div style={{ padding: '20px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--color-text)' }}>{m.title}</h3>
+                        <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>{m.content}</p>
+                        {m.tags && (
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px' }}>
+                            {m.tags.map((t: string) => (
+                              <span key={t} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--color-primary-bg)', color: 'var(--color-primary-dark)', fontWeight: 700 }}>
+                                #{t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -2181,31 +2423,81 @@ export default function App() {
           </div>
         )}
 
-        {/* ─── CARETAKER MEMORIES ─── */}
+        {/* ─── CARETAKER MEMORIES & NOSTALGIA VIDEO VAULT ─── */}
         {page === 'caretaker_memories' && (
           <div className="stack" style={{ gap: 'var(--space-lg)' }}>
             <div className="page-header">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
                   <h2 style={{ fontSize: '26px', color: '#4A148C' }}>📸 {t('nav_upload_memories', language)}</h2>
-                  <p className="text-muted" style={{ fontSize: '14px' }}>Memories added here are instantly processed into Groq AI cognitive games & Asha AI stories.</p>
+                  <p className="text-muted" style={{ fontSize: '14px' }}>Photos and 10 traditional heritage videos are processed into Groq AI cognitive games & Asha AI stories.</p>
                 </div>
                 <button onClick={() => setShowMemoryModal(true)} className="btn btn-primary" style={{ backgroundColor: '#7B1FA2' }}>
-                  + Upload New Memory
+                  + Upload New Photo / Memory
                 </button>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '18px' }}>
-              {memoriesList.map(m => (
-                <div key={m.id} className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '18px' }}>
-                  {m.image_url && <img src={m.image_url} alt={m.title} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />}
-                  <div style={{ padding: '16px' }}>
-                    <h4 style={{ fontSize: '16px', fontWeight: 800 }}>{m.title}</h4>
-                    <p style={{ fontSize: '13px', color: '#555', marginTop: '6px', lineHeight: 1.4 }}>{m.content}</p>
+            {/* Video Vault Preview Banner */}
+            <div className="card" style={{ backgroundColor: '#F1F8E9', borderRadius: '18px', padding: '18px 24px', border: '1.5px solid #81C784' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '32px' }}>🎬</span>
+                  <div>
+                    <strong style={{ fontSize: '16px', color: '#2E7D32' }}>10 Traditional Game Video Vault Active</strong>
+                    <p style={{ fontSize: '13px', color: '#558B2F', marginTop: '2px' }}>
+                      All 10 nostalgic game video clips are stored and linked to cognitive games (Kabaddi, Uriyadi, Gilli Danda, etc.).
+                    </p>
                   </div>
                 </div>
-              ))}
+                <span style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '10px', backgroundColor: '#E8F5E9', color: '#2E7D32', fontWeight: 800 }}>
+                  ✓ 10 Videos Connected
+                </span>
+              </div>
+            </div>
+
+            {/* Caretaker Videos Gallery */}
+            <div style={{ marginTop: '10px' }}>
+              <h3 style={{ fontSize: '18px', color: '#4A148C', fontWeight: 800, marginBottom: '14px' }}>
+                🎬 10 Traditional Game Videos (Elder Side-Player Linked)
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '18px' }}>
+                {gameVideos.map(vid => (
+                  <div key={vid.id} className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '18px', border: '1.5px solid #A5D6A7' }}>
+                    <video
+                      src={vid.video_url}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      style={{ width: '100%', height: '160px', objectFit: 'cover', backgroundColor: '#000000' }}
+                    >
+                      <source src={vid.video_url} type="video/mp4" />
+                    </video>
+                    <div style={{ padding: '16px' }}>
+                      <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#2E7D32' }}>{vid.title}</h4>
+                      <p style={{ fontSize: '12px', color: '#555', marginTop: '4px', lineHeight: 1.4 }}>{vid.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Caretaker Uploaded Custom Memories */}
+            <div style={{ marginTop: '20px' }}>
+              <h3 style={{ fontSize: '18px', color: '#4A148C', fontWeight: 800, marginBottom: '14px' }}>
+                🖼️ Family Photos & Life Stories
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '18px' }}>
+                {memoriesList.map(m => (
+                  <div key={m.id} className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '18px' }}>
+                    {m.image_url && <img src={m.image_url} alt={m.title} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />}
+                    <div style={{ padding: '16px' }}>
+                      <h4 style={{ fontSize: '16px', fontWeight: 800 }}>{m.title}</h4>
+                      <p style={{ fontSize: '13px', color: '#555', marginTop: '6px', lineHeight: 1.4 }}>{m.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

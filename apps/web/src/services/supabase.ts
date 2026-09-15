@@ -83,6 +83,144 @@ export interface ReminderItem {
   last_confirmed_at?: string;
 }
 
+export interface GameVideo {
+  id: string;
+  game_key: string;
+  title: string;
+  title_ta: string;
+  description: string;
+  description_ta: string;
+  video_url: string;
+  thumbnail_url?: string;
+  category: 'outdoor' | 'indoor' | 'traditional' | 'cinema';
+  cultural_notes: string;
+  cultural_notes_ta: string;
+  created_at?: string;
+}
+
+export const DEFAULT_GAME_VIDEOS: GameVideo[] = [
+  {
+    id: 'vid_gilli_danda',
+    game_key: 'gilli_danda',
+    title: 'Gilli Danda (கிட்டிப்புல்)',
+    title_ta: 'கிட்டிப்புல் பாரம்பரிய விளையாட்டு',
+    description: 'Traditional street game of striking a tapered wooden peg with a long stick across open fields.',
+    description_ta: 'கிராமத்து தெருக்களில் சிறுவர்களால் ஆவலுடன் விளையாடப்பட்ட பாரம்பரிய கிட்டிப்புல் விளையாட்டு.',
+    video_url: '/videos/Gilli-Danda.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Strengthens hand-eye coordination, trajectory estimation, and quick reflexes.',
+    cultural_notes_ta: 'கை-கண் ஒருங்கிணைப்பு மற்றும் விரைவான எதிர்வினைத் திறனைத் தூண்டுகிறது.',
+  },
+  {
+    id: 'vid_kabaddi',
+    game_key: 'kabaddi',
+    title: 'Kabaddi (சடுகுடு / கபடி)',
+    title_ta: 'சடுகுடு / கபடி வீரம் நிறைந்த விளையாட்டு',
+    description: 'Ancient Tamil contact game requiring continuous chant, breath control, and quick evasion.',
+    description_ta: 'ஒரே மூச்சில் "கபடி கபடி" என்று பாடி எதிரணியினரைத் தொட்டு வரும் வீர விளையாட்டு.',
+    video_url: '/videos/Kabaddi.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Invokes energetic childhood memories of village tournaments and team bonding.',
+    cultural_notes_ta: 'கிராமப்புறத் திருவிழாக்கள் மற்றும் பள்ளிப் பருவ நினைவுகளை மீட்டெடுக்கிறது.',
+  },
+  {
+    id: 'vid_kanche',
+    game_key: 'kanche',
+    title: 'Kanche / Marbles (கோலி குண்டு)',
+    title_ta: 'கோலி குண்டு விளையாட்டு நினைவுகள்',
+    description: 'Precision thumb-strike marble game played in a circle etched in the soil.',
+    description_ta: 'மண்ணில் வட்டம் வரைந்து வண்ண வண்ண கோலி குண்டுகளை விரலால் குறிபார்த்து அடிக்கும் விளையாட்டு.',
+    video_url: '/videos/Kanche.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Sharpens spatial positioning memory and fine motor recall.',
+    cultural_notes_ta: 'வண்ணங்களை நினைவில் நிறுத்தும் திறன் மற்றும் குறியிடும் கவனத்தை வளர்க்கிறது.',
+  },
+  {
+    id: 'vid_kite_flying',
+    game_key: 'pattam_viduthal',
+    title: 'Kite Flying (பட்டம் விடுதல்)',
+    title_ta: 'பட்டம் விடுதல் வான்வெளி நினைவுகள்',
+    description: 'Soaring colorful diamond kites high in the evening breeze from village rooftops.',
+    description_ta: 'மாலை வேளையில் மொட்டை மாடியில் நின்று வண்ணப் பட்டங்களை காற்றில் பறக்கவிடும் இன்பமான அனுபவம்.',
+    video_url: '/videos/Kite-Flying.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Stimulates wind path planning, spatial orientation, and joyful sky gazing.',
+    cultural_notes_ta: 'திசை உணர்வு மற்றும் வான்வெளியை நோக்கும் மகிழ்ச்சியான உணர்வைத் தருகிறது.',
+  },
+  {
+    id: 'vid_nondi',
+    game_key: 'nondi',
+    title: 'Nondi / Hopscotch (நொண்டி விளையாட்டு)',
+    title_ta: 'நொண்டி பாரம்பரிய கட்ட விளையாட்டு',
+    description: 'Hopscotch grid drawn with chalk or brick where players hop through numbered squares to reach the fruit.',
+    description_ta: 'தரையிலோ தெருவிலோ கட்டங்கள் வரைந்து ஒற்றைக் காலால் தாண்டி "பழம்" தொடும் பாரம்பரிய விளையாட்டு.',
+    video_url: '/videos/Nondi.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Promotes working memory of sequential paths and balancing rules.',
+    cultural_notes_ta: 'வரிசைமுறை நினைவாற்றல் மற்றும் உடலளவிலான சமநிலை நினைவுகளைத் தூண்டுகிறது.',
+  },
+  {
+    id: 'vid_pallanguzhi',
+    game_key: 'pallanguzhi',
+    title: 'Pallanguzhi (பல்லாங்குழி)',
+    title_ta: 'பல்லாங்குழி மரப்பலகை விளையாட்டு',
+    description: 'Classic 14-pit wooden board game played with cowrie shells and tamarind seeds on verandahs.',
+    description_ta: 'திண்ணையில் அமர்ந்து புளியங்கொட்டைகள் அல்லது சோழிகளைக் கொண்டு 14 குழிகளில் விளையாடும் பாரம்பரிய ஆட்டம்.',
+    video_url: '/videos/Pallanguzhi.mp4',
+    category: 'indoor',
+    cultural_notes: 'Stimulates mathematical counting, working memory, and leisurely evening reminiscing.',
+    cultural_notes_ta: 'எண்ணிக்கை கணக்கீடு மற்றும் குடும்பத்தினருடன் திண்ணையில் கழித்த மாலை நேரங்களை நினைவூட்டுகிறது.',
+  },
+  {
+    id: 'vid_street_cricket',
+    game_key: 'street_cricket',
+    title: 'Street Cricket (தெரு கிரிக்கெட்)',
+    title_ta: 'தெரு கிரிக்கெட் காலத்து நினைவுகள்',
+    description: 'Gully cricket with brick wickets, tennis balls, and unique local neighbourhood rules.',
+    description_ta: 'செங்கல் ஸ்டம்ப், டென்னிஸ் பந்துடன் சந்துகளிலும் சந்து முனைகளிலும் விளையாடிய உற்சாக கிரிக்கெட்.',
+    video_url: '/videos/Street-Cricket.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Revives situational rule memory, social laughter, and score calculation.',
+    cultural_notes_ta: 'நண்பர்களுடன் விளையாடிய உரையாடல்கள் மற்றும் உற்சாக கணக்குகளை நினைவுகூர்கிறது.',
+  },
+  {
+    id: 'vid_thaayam',
+    game_key: 'thaayam',
+    title: 'Thaayam (தாயக்கட்டம் / தாயம்)',
+    title_ta: 'தாயக்கட்டம் பித்தளை பகடை ஆட்டம்',
+    description: 'Strategic family board game with brass dice, safe castles (malai), and exciting token cutting.',
+    description_ta: 'குடும்பமாக வட்டமாக அமர்ந்து பித்தளை தாயம் உருட்டி மலை ஏறும் உற்சாகமான பாரம்பரிய பலகை விளையாட்டு.',
+    video_url: '/videos/Thayaam.mp4',
+    category: 'indoor',
+    cultural_notes: 'Enhances strategic planning, safe-zone awareness, and family nostalgia.',
+    cultural_notes_ta: 'குடும்ப உறவுகள் மற்றும் பண்டிகை காலங்களில் தாயக்கட்டம் ஆடிய மகிழ்ச்சியைத் தருகிறது.',
+  },
+  {
+    id: 'vid_tyre_racing',
+    game_key: 'tyre_oattam',
+    title: 'Tyre Racing (டயர் ஓட்டம்)',
+    title_ta: 'டயர் ஓட்டம் தெரு சவாரி நினைவுகள்',
+    description: 'Guiding a bicycle tyre with a wooden stick through winding sandy village lanes.',
+    description_ta: 'சைக்கிள் பழைய டயரைக் குச்சியால் தட்டி தெருவெங்கும் ஓட்டிச் சென்ற குழந்தைப்பருவ மகிழ்ச்சி.',
+    video_url: '/videos/Tyre-Racing.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Triggers navigation memory of childhood village paths and tea stall landmarks.',
+    cultural_notes_ta: 'கிராமத்து தெருக்கள் மற்றும் குழந்தைப்பருவ சுதந்திரமான ஓட்டத்தை நினைவூட்டுகிறது.',
+  },
+  {
+    id: 'vid_uriyadi',
+    game_key: 'uriyadi',
+    title: 'Uriyadi (உறியடி திருவிழா)',
+    title_ta: 'உறியடி திருவிழா மகிழ்ச்சி நினைவுகள்',
+    description: 'Festive swinging pot strike during Krishna Jayanthi and Pongal temple celebrations.',
+    description_ta: 'பொங்கல் மற்றும் கிருஷ்ண ஜெயந்தி திருவிழாக்களில் மேளதாளத்துடன் தொங்கும் பானையை அடித்து உடைக்கும் விளையாட்டு.',
+    video_url: '/videos/Uriyadi.mp4',
+    category: 'outdoor',
+    cultural_notes: 'Evokes festive temple melodies, rhythm synchronization, and community joy.',
+    cultural_notes_ta: 'கோவில் திருவிழாக்கள், மேள வாத்தியங்கள் மற்றும் பக்திப் பரவச நினைவுகளை மீட்டெடுக்கிறது.',
+  },
+];
+
 // ─── Supabase Auth ────────────────────────────────────────────────────────────
 export const supabaseAuth = {
   // Local registered user storage helper
@@ -953,6 +1091,117 @@ export const databaseService = {
     }
 
     return attemptRecord;
+  },
+
+  // ── 10. Heritage Game Videos (10 Nostalgia Videos Library) ──
+  async getGameVideos(): Promise<GameVideo[]> {
+    const storageKey = 'granny_game_videos';
+    const cached = localStorage.getItem(storageKey);
+    let videos: GameVideo[] = cached ? JSON.parse(cached) : [];
+
+    // If cache is empty or incomplete, initialize with default 10 videos
+    if (!videos || videos.length < DEFAULT_GAME_VIDEOS.length) {
+      videos = [...DEFAULT_GAME_VIDEOS];
+      localStorage.setItem(storageKey, JSON.stringify(videos));
+    }
+
+    // Attempt to sync from Supabase PostgreSQL database
+    if (SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+      try {
+        const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/game_videos?select=*`, {
+          headers: {
+            'apikey': SUPABASE_CONFIG.anonKey,
+            'Authorization': `Bearer ${localStorage.getItem('granny_token') || SUPABASE_CONFIG.anonKey}`,
+          },
+        });
+        if (res.ok) {
+          const dbVideos: GameVideo[] = await res.json();
+          if (Array.isArray(dbVideos) && dbVideos.length > 0) {
+            // Merge with local fallback
+            const merged = [...dbVideos];
+            for (const def of DEFAULT_GAME_VIDEOS) {
+              if (!merged.some(v => v.game_key === def.game_key)) {
+                merged.push(def);
+              }
+            }
+            localStorage.setItem(storageKey, JSON.stringify(merged));
+            return merged;
+          }
+        }
+      } catch (err) {
+        console.warn('Game videos Supabase sync note (using local cache):', err);
+      }
+    }
+
+    return videos;
+  },
+
+  async getGameVideoByKey(gameKey: string): Promise<GameVideo | undefined> {
+    const all = await this.getGameVideos();
+    const cleanKey = gameKey.toLowerCase().replace(/[-_]/g, '');
+
+    // Map common aliases
+    const keyMap: Record<string, string> = {
+      gillidanda: 'gilli_danda',
+      kittipull: 'gilli_danda',
+      kabaddi: 'kabaddi',
+      sadugudu: 'kabaddi',
+      kanche: 'kanche',
+      koligundu: 'kanche',
+      pattamviduthal: 'pattam_viduthal',
+      kiteflying: 'pattam_viduthal',
+      nondi: 'nondi',
+      hopscotch: 'nondi',
+      pallanguzhi: 'pallanguzhi',
+      streetcricket: 'street_cricket',
+      cricket: 'street_cricket',
+      thaayam: 'thaayam',
+      thayam: 'thaayam',
+      dayakattai: 'thaayam',
+      dhayakkattai: 'thaayam',
+      tyreoattam: 'tyre_oattam',
+      tyreracing: 'tyre_oattam',
+      tyrevandi: 'tyre_oattam',
+      uriyadi: 'uriyadi',
+    };
+
+    const targetKey = keyMap[cleanKey] || gameKey;
+
+    return all.find(v => {
+      const vClean = v.game_key.toLowerCase().replace(/[-_]/g, '');
+      return v.game_key === targetKey || v.game_key === gameKey || vClean === cleanKey;
+    });
+  },
+
+  async saveGameVideo(video: GameVideo): Promise<GameVideo> {
+    const storageKey = 'granny_game_videos';
+    const existing: GameVideo[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const idx = existing.findIndex(v => v.game_key === video.game_key);
+    if (idx >= 0) {
+      existing[idx] = { ...existing[idx], ...video };
+    } else {
+      existing.push(video);
+    }
+    localStorage.setItem(storageKey, JSON.stringify(existing));
+
+    if (SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+      try {
+        await fetch(`${SUPABASE_CONFIG.url}/rest/v1/game_videos`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_CONFIG.anonKey,
+            'Authorization': `Bearer ${localStorage.getItem('granny_token') || SUPABASE_CONFIG.anonKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates',
+          },
+          body: JSON.stringify(video),
+        });
+      } catch (e) {
+        console.warn('Game video save sync note:', e);
+      }
+    }
+
+    return video;
   }
 };
 

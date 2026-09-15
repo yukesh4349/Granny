@@ -171,7 +171,7 @@ class GroqService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'groq/compound-mini',
           messages: [{ role: 'user', content: 'Say "OK" in 1 word.' }],
           max_tokens: 5,
         }),
@@ -206,7 +206,13 @@ class GroqService {
       throw new Error('No Groq API keys configured. Please add a Groq API key in Settings.');
     }
 
-    const models = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'llama3-70b-8192'];
+    const models = [
+      'groq/compound-mini',
+      'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b',
+      'groq/compound',
+      'openai/gpt-oss-120b'
+    ];
     let lastError: any = null;
 
     // Try starting from current index, rotate across pool
