@@ -52,14 +52,14 @@ web-build/
 /database/prisma/migrations/*
 !/database/prisma/migrations/.gitkeep
 
-# Large Media & Video Binaries (Code-Only Repository)
-*.mp4
+# Large Media & Video Binaries
 *.mov
 *.avi
 *.mkv
 *.webm
 *.flv
 /public/videos/
-/apps/web/public/videos/
 /apps/mobile/assets/videos/
+# Allow web app public game videos for Vercel static serving
+!/apps/web/public/videos/*.mp4
 
