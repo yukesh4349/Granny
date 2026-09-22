@@ -162,6 +162,59 @@ export const supabaseAuth = {
           if (role === 'ELDER' && linkCode) {
             await storage.setItem(`granny_linkcode_${realUserId}`, linkCode);
           }
+
+          // Upsert into users table
+          await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${realToken || SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates,return=representation',
+            },
+            body: JSON.stringify({
+              id: realUserId,
+              name: name.trim(),
+              email: cleanEmail,
+              phone: phone || null,
+              role,
+              language,
+              caregiver_consent: true,
+            }),
+          }).catch(() => {});
+
+          if (role === 'ELDER') {
+            await fetch(`${SUPABASE_URL}/rest/v1/elder_profiles`, {
+              method: 'POST',
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${realToken || SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates',
+              },
+              body: JSON.stringify({
+                user_id: realUserId,
+                cognitive_level: 2,
+                emergency_contact_phone: phone || null,
+              }),
+            }).catch(() => {});
+
+            if (linkCode) {
+              await fetch(`${SUPABASE_URL}/rest/v1/elder_link_codes`, {
+                method: 'POST',
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${realToken || SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'resolution=merge-duplicates',
+                },
+                body: JSON.stringify({
+                  elder_id: realUserId,
+                  code: linkCode,
+                }),
+              }).catch(() => {});
+            }
+          }
         }
         return { user: { id: realUserId, name: name.trim(), email: cleanEmail, phone, role, language }, accessToken: realToken };
       }

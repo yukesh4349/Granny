@@ -37,7 +37,7 @@ async function request<T>(
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
-  register: (data: { name: string; phone?: string; email?: string; password?: string; role?: string }) =>
+  register: (data: { name: string; phone?: string; email?: string; password?: string; role?: string; language?: string }) =>
     request<any>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
 
   login: (data: { phone?: string; email?: string; password?: string; otp?: string }) =>
@@ -108,7 +108,7 @@ export const aiApi = {
 export const remindersApi = {
   getAll: () => request<any[]>('/reminders'),
   getToday: () => request<any[]>('/reminders/today'),
-  create: (data: { type: string; title: string; description?: string; scheduleCron: string }) =>
+  create: (data: { type: string; title: string; description?: string; scheduleCron?: string; timeOfDay?: string }) =>
     request<any>('/reminders', { method: 'POST', body: JSON.stringify(data) }),
   confirm: (id: string) => request<any>(`/reminders/${id}/confirm`, { method: 'POST' }),
   delete: (id: string) => request<any>(`/reminders/${id}`, { method: 'DELETE' }),
@@ -120,4 +120,30 @@ export const familyApi = {
   getAdherence: (elderId: string) => request<any>(`/family/adherence/${elderId}`),
   getMoodTrend: (elderId: string) => request<any>(`/family/mood/${elderId}`),
   getGamePerformance: (elderId: string) => request<any>(`/family/games/${elderId}`),
+};
+
+// ─── Health & Medical Records ─────────────────────────────────────────────────
+export const healthApi = {
+  getReports: (elderId: string) => request<any[]>(`/health/reports?elderId=${elderId}`),
+  getReportById: (id: string) => request<any>(`/health/reports/${id}`),
+  createReport: (data: any) => request<any>('/health/reports', { method: 'POST', body: JSON.stringify(data) }),
+  updateReport: (id: string, data: any) => request<any>(`/health/reports/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteReport: (id: string) => request<any>(`/health/reports/${id}`, { method: 'DELETE' }),
+  getCareNotes: (elderId: string) => request<any[]>(`/health/notes?elderId=${elderId}`),
+  createCareNote: (data: any) => request<any>('/health/notes', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+// ─── Caretaker Notifications & Alarms ─────────────────────────────────────────
+export const notificationsApi = {
+  getNotifications: (elderId?: string) => request<any[]>(`/notifications${elderId ? `?elderId=${elderId}` : ''}`),
+  createNotification: (data: any) => request<any>('/notifications', { method: 'POST', body: JSON.stringify(data) }),
+  markAsRead: (id: string) => request<any>(`/notifications/${id}/read`, { method: 'PUT' }),
+  markAllAsRead: (elderId?: string) => request<any>(`/notifications/read-all${elderId ? `?elderId=${elderId}` : ''}`, { method: 'POST' }),
+  clearNotifications: (elderId?: string) => request<any>(`/notifications/clear${elderId ? `?elderId=${elderId}` : ''}`, { method: 'DELETE' }),
+};
+
+// ─── Personalization ─────────────────────────────────────────────────────────
+export const personalizationApi = {
+  getPreferences: (userId: string) => request<any>(`/personalization/${userId}`),
+  updatePreferences: (userId: string, data: any) => request<any>(`/personalization/${userId}`, { method: 'PUT', body: JSON.stringify(data) }),
 };

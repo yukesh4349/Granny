@@ -1,10 +1,9 @@
 import React from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { t } from '../../i18n';
 
 interface AppShellProps {
   user: { name: string; role: string; language?: string };
-  page: string;
-  setPage: (page: any) => void;
   onLogout: () => void;
   language: string;
   onToggleLanguage: () => void;
@@ -14,15 +13,16 @@ interface AppShellProps {
 
 export default function AppShell({
   user,
-  page,
-  setPage,
   onLogout,
   language,
   onToggleLanguage,
   onSosTrigger,
   children
 }: AppShellProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const isCaretaker = user.role === 'CAREGIVER';
+  const currentPath = location.pathname;
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--color-bg)' }}>
@@ -37,18 +37,18 @@ export default function AppShell({
       }}>
         {/* Left: Brand + Prominent Portal Mode Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <img 
-            src="/logo.png" 
-            alt="Granny Logo" 
-            style={{ height: '44px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }} 
-            onClick={() => setPage(isCaretaker ? 'dashboard' : 'home')}
-          />
-          <img 
-            src="/title.png" 
-            alt="Granny" 
-            style={{ height: '32px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }} 
-            onClick={() => setPage(isCaretaker ? 'dashboard' : 'home')}
-          />
+          <Link to={isCaretaker ? '/dashboard' : '/home'} style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+            <img 
+              src="/logo.png" 
+              alt="Granny Logo" 
+              style={{ height: '44px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }} 
+            />
+            <img 
+              src="/title.png" 
+              alt="Granny" 
+              style={{ height: '32px', width: 'auto', objectFit: 'contain', cursor: 'pointer' }} 
+            />
+          </Link>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {/* High-visibility Portal Mode Pill */}
@@ -60,7 +60,7 @@ export default function AppShell({
                   fontWeight: 800, fontSize: '12px', letterSpacing: '0.02em'
                 }}>
                   <span>👨‍👩‍👧</span>
-                  <span>{language === 'ta' ? 'பராமரிப்பாளர் பகுதி' : 'Caregiver Home'}</span>
+                  <span>{language === 'ta' ? 'பராமரிப்பாளர் பகுதி' : 'Caregiver Portal'}</span>
                 </div>
               ) : (
                 <div style={{
@@ -157,14 +157,14 @@ export default function AppShell({
               {t('nav_elder_spaces', language)}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <SidebarItem icon="nature_people" label={t('nav_home', language)} active={page === 'home'} onClick={() => setPage('home')} />
-              <SidebarItem icon="record_voice_over" label={t('nav_companion', language)} active={page === 'companion'} onClick={() => setPage('companion')} />
-              <SidebarItem icon="contact_phone" label={t('nav_family', language)} active={page === 'family'} onClick={() => setPage('family')} />
-              <SidebarItem icon="explore" label={t('nav_games', language)} active={page === 'games' || page === 'play'} onClick={() => setPage('games')} />
-              <SidebarItem icon="medication" label={t('nav_health', language)} active={page === 'health'} onClick={() => setPage('health')} />
-              <SidebarItem icon="photo_library" label={t('nav_memory', language)} active={page === 'memory'} onClick={() => setPage('memory')} />
-              <SidebarItem icon="theaters" label={t('nav_theatre', language)} active={page === 'theatre'} onClick={() => setPage('theatre')} />
-              <SidebarItem icon="settings" label={t('nav_settings', language)} active={page === 'settings'} onClick={() => setPage('settings')} />
+              <SidebarItem to="/home" icon="nature_people" label={t('nav_home', language)} active={currentPath === '/home'} />
+              <SidebarItem to="/companion" icon="record_voice_over" label={t('nav_companion', language)} active={currentPath === '/companion'} />
+              <SidebarItem to="/family" icon="contact_phone" label={t('nav_family', language)} active={currentPath === '/family'} />
+              <SidebarItem to="/games" icon="explore" label={t('nav_games', language)} active={currentPath.startsWith('/games')} />
+              <SidebarItem to="/health" icon="medication" label={t('nav_health', language)} active={currentPath === '/health'} />
+              <SidebarItem to="/memory" icon="photo_library" label={t('nav_memory', language)} active={currentPath === '/memory'} />
+              <SidebarItem to="/theatre" icon="theaters" label={t('nav_theatre', language)} active={currentPath === '/theatre'} />
+              <SidebarItem to="/settings" icon="settings" label={t('nav_settings', language)} active={currentPath === '/settings'} />
             </div>
           </>
         ) : (
@@ -173,14 +173,14 @@ export default function AppShell({
               {t('nav_caretaker_insights', language)}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <SidebarItem icon="analytics" label={t('nav_overview', language)} active={page === 'dashboard'} onClick={() => setPage('dashboard')} isCaretaker />
-              <SidebarItem icon="alarm" label={t('nav_alarms', language)} active={page === 'caretaker_alarms'} onClick={() => setPage('caretaker_alarms')} isCaretaker />
-              <SidebarItem icon="medical_services" label={t('nav_medical', language)} active={page === 'caretaker_medical'} onClick={() => setPage('caretaker_medical')} isCaretaker />
-              <SidebarItem icon="add_photo_alternate" label={t('nav_upload_memories', language)} active={page === 'caretaker_memories'} onClick={() => setPage('caretaker_memories')} isCaretaker />
-              <SidebarItem icon="contacts" label={t('nav_contacts', language)} active={page === 'caretaker_contacts'} onClick={() => setPage('caretaker_contacts')} isCaretaker />
-              <SidebarItem icon="assignment" label={t('nav_care_guide', language)} active={page === 'caretaker_guide'} onClick={() => setPage('caretaker_guide')} isCaretaker />
-              <SidebarItem icon="link" label={t('nav_link_elder', language)} active={page === 'caretaker_link'} onClick={() => setPage('caretaker_link')} isCaretaker />
-              <SidebarItem icon="settings" label={t('nav_settings', language)} active={page === 'settings'} onClick={() => setPage('settings')} isCaretaker />
+              <SidebarItem to="/dashboard" icon="analytics" label={t('nav_overview', language)} active={currentPath === '/dashboard'} isCaretaker />
+              <SidebarItem to="/caretaker/alarms" icon="alarm" label={t('nav_alarms', language)} active={currentPath === '/caretaker/alarms'} isCaretaker />
+              <SidebarItem to="/caretaker/medical" icon="medical_services" label={t('nav_medical', language)} active={currentPath === '/caretaker/medical'} isCaretaker />
+              <SidebarItem to="/caretaker/memories" icon="add_photo_alternate" label={t('nav_upload_memories', language)} active={currentPath === '/caretaker/memories'} isCaretaker />
+              <SidebarItem to="/caretaker/contacts" icon="contacts" label={t('nav_contacts', language)} active={currentPath === '/caretaker/contacts'} isCaretaker />
+              <SidebarItem to="/caretaker/guide" icon="assignment" label={t('nav_care_guide', language)} active={currentPath === '/caretaker/guide'} isCaretaker />
+              <SidebarItem to="/caretaker/link" icon="link" label={t('nav_link_elder', language)} active={currentPath === '/caretaker/link'} isCaretaker />
+              <SidebarItem to="/settings" icon="settings" label={t('nav_settings', language)} active={currentPath === '/settings'} isCaretaker />
             </div>
           </>
         )}
@@ -205,25 +205,26 @@ export default function AppShell({
 }
 
 function SidebarItem({
+  to,
   icon,
   label,
   active,
-  onClick,
   isCaretaker = false
 }: {
+  to: string;
   icon: string;
   label: string;
   active: boolean;
-  onClick: () => void;
   isCaretaker?: boolean;
 }) {
+  const navigate = useNavigate();
   const activeBg = isCaretaker ? '#7B1FA2' : 'var(--color-primary)';
   const activeColor = '#FFFFFF';
   const inactiveColor = isCaretaker ? '#4A148C' : 'var(--color-text-secondary)';
 
   return (
     <button 
-      onClick={onClick}
+      onClick={() => navigate(to)}
       style={{
         display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 14px',
         borderRadius: '12px', border: 'none', cursor: 'pointer',

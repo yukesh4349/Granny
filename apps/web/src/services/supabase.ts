@@ -470,6 +470,20 @@ export const supabaseAuth = {
   }
 };
 
+// ─── Broadcast Sync Helper for Real-Time Cross-Portal Data Sync ───────────────
+export function notifyDataChange(elderId: string, eventType: string = 'DATA_UPDATED') {
+  try {
+    const bc = new BroadcastChannel('granny_data_sync');
+    bc.postMessage({ type: eventType, elderId, timestamp: Date.now() });
+    bc.close();
+  } catch {}
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('granny_data_sync', { detail: { type: eventType, elderId } }));
+    }
+  } catch {}
+}
+
 // ─── Database Services for Caretaker & Elderly ────────────────────────────────
 export const databaseService = {
   // ── 1. Elder Linking Code ──
@@ -700,6 +714,7 @@ export const databaseService = {
       console.warn('Medical report online sync note:', e);
     }
 
+    notifyDataChange(report.elder_id, 'MEDICAL_REPORTS_UPDATED');
     return newReport;
   },
 
@@ -708,6 +723,7 @@ export const databaseService = {
     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const filtered = existing.filter((r: MedicalReport) => r.id !== reportId);
     localStorage.setItem(storageKey, JSON.stringify(filtered));
+    notifyDataChange(elderId, 'MEDICAL_REPORTS_UPDATED');
   },
 
   // ── 3. Family Contacts (Visible in Elder's Sanctuary) ──
@@ -774,6 +790,7 @@ export const databaseService = {
     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
     existing.push(newContact);
     localStorage.setItem(storageKey, JSON.stringify(existing));
+    notifyDataChange(contact.elder_id, 'FAMILY_CONTACTS_UPDATED');
 
     return newContact;
   },
@@ -783,6 +800,7 @@ export const databaseService = {
     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const filtered = existing.filter((c: FamilyContact) => c.id !== contactId);
     localStorage.setItem(storageKey, JSON.stringify(filtered));
+    notifyDataChange(elderId, 'FAMILY_CONTACTS_UPDATED');
   },
 
   // ── 4. Caretaker Situation Notes & Guidelines ──
@@ -809,6 +827,7 @@ export const databaseService = {
     const updated = { ...notes, updated_at: new Date().toISOString() };
     const storageKey = `care_notes_${notes.elder_id}`;
     localStorage.setItem(storageKey, JSON.stringify(updated));
+    notifyDataChange(notes.elder_id, 'CARE_NOTES_UPDATED');
     return updated;
   },
 
@@ -839,6 +858,7 @@ export const databaseService = {
     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
     existing.push(newRem);
     localStorage.setItem(storageKey, JSON.stringify(existing));
+    notifyDataChange(reminder.elder_id, 'REMINDERS_UPDATED');
     return newRem;
   },
 
@@ -847,6 +867,7 @@ export const databaseService = {
     const existing: ReminderItem[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const updated = existing.map(r => r.id === reminderId ? { ...r, confirmed: !r.confirmed, last_confirmed_at: new Date().toISOString() } : r);
     localStorage.setItem(storageKey, JSON.stringify(updated));
+    notifyDataChange(elderId, 'REMINDERS_UPDATED');
     return updated;
   },
 
@@ -855,6 +876,7 @@ export const databaseService = {
     const existing: ReminderItem[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const filtered = existing.filter(r => r.id !== reminderId);
     localStorage.setItem(storageKey, JSON.stringify(filtered));
+    notifyDataChange(elderId, 'REMINDERS_UPDATED');
   },
 
   // ── 6. Memories (Caretaker upload & Elder viewer) ──
@@ -914,6 +936,7 @@ export const databaseService = {
     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
     existing.unshift(newMem);
     localStorage.setItem(storageKey, JSON.stringify(existing));
+    notifyDataChange(elderId, 'MEMORIES_UPDATED');
     return newMem;
   },
 
@@ -964,6 +987,8 @@ export const databaseService = {
         severity: notif.severity
       });
     }
+
+    notifyDataChange(elderId, 'NOTIFICATIONS_UPDATED');
 
     return newNotif;
   },

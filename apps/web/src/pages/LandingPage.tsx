@@ -3,24 +3,31 @@
 // Fully localized in Tamil and English
 // ============================================================================
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAppContext } from '../contexts/AppContext';
 import { t } from '../i18n';
 import { ALL_GAMES } from '../features/games/engine/games';
 
-interface LandingPageProps {
-  onStartDemo: (role?: 'ELDER' | 'CAREGIVER') => void;
-  onOpenAuth: (mode?: 'login' | 'register') => void;
-  highContrast: boolean;
-  onToggleContrast: () => void;
-  language: string;
-  onToggleLanguage: () => void;
+export interface LandingPageProps {
+  onStartDemo?: (role?: 'ELDER' | 'CAREGIVER') => void;
+  onOpenAuth?: (mode?: 'login' | 'register') => void;
+  highContrast?: boolean;
+  onToggleContrast?: () => void;
+  language?: string;
+  onToggleLanguage?: () => void;
 }
 
-export default function LandingPage({
-  onStartDemo,
-  onOpenAuth,
-  language,
-  onToggleLanguage,
-}: LandingPageProps) {
+export default function LandingPage(props: LandingPageProps) {
+  const ctx = useAppContext();
+  const navigate = useNavigate();
+
+  const onStartDemo = props.onStartDemo || ctx.handleDemoLogin;
+  const onOpenAuth = props.onOpenAuth || ((mode) => {
+    ctx.setAuthMode(mode || 'login');
+    navigate(mode === 'register' ? '/register' : '/login');
+  });
+  const language = props.language || ctx.language;
+  const onToggleLanguage = props.onToggleLanguage || ctx.toggleLanguage;
   const [activeCategory, setActiveCategory] = useState<'all' | 'outdoor' | 'indoor' | 'cinema'>('all');
 
   const filteredGames = ALL_GAMES.filter((_, idx) => {

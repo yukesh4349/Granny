@@ -4,7 +4,7 @@
 // Real-time Audio Synthesizer, 20 Nostalgia Games, Memory Vault, Health Alarms,
 // and Loud SOS Siren Dispatch
 // ============================================================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   View,
@@ -15,6 +15,8 @@ import {
   StatusBar,
   Modal,
   Image,
+  BackHandler,
+  Linking,
 } from 'react-native';
 import { THEME } from './src/constants/theme';
 import AuthScreen from './src/screens/Auth/AuthScreen';
@@ -57,7 +59,60 @@ export default function App() {
         }
       }
     }).catch(() => {});
+
+    // Deep Linking Handler
+    const handleDeepLink = (event: { url: string }) => {
+      const url = event.url;
+      if (!url) return;
+      if (url.includes('games')) {
+        setInGamesLibrary(true);
+        setActiveElderTab('games');
+      } else if (url.includes('companion')) {
+        setActiveElderTab('companion');
+      } else if (url.includes('health') || url.includes('reminders')) {
+        setHealthDrawerVisible(true);
+      } else if (url.includes('memory')) {
+        setActiveElderTab('memory');
+      } else if (url.includes('settings')) {
+        setActiveElderTab('settings');
+      } else if (url.includes('sos')) {
+        handleEmergencySos();
+      }
+    };
+
+    Linking.getInitialURL().then(url => {
+      if (url) handleDeepLink({ url });
+    });
+    const sub = Linking.addEventListener('url', handleDeepLink);
+    return () => sub.remove();
   }, []);
+
+  // Hardware Back Button Handler for Android
+  useEffect(() => {
+    const backAction = () => {
+      if (sosModalVisible) {
+        handleDismissSos();
+        return true;
+      }
+      if (healthDrawerVisible) {
+        setHealthDrawerVisible(false);
+        return true;
+      }
+      if (inGamesLibrary) {
+        setInGamesLibrary(false);
+        setActiveElderTab('home');
+        return true;
+      }
+      if (activeElderTab !== 'home') {
+        setActiveElderTab('home');
+        return true;
+      }
+      return false; // Exit app
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [sosModalVisible, healthDrawerVisible, inGamesLibrary, activeElderTab]);
 
   const colors = highContrast ? THEME.highContrastColors : THEME.colors;
   const isTamil = language === 'ta';

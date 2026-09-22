@@ -12,6 +12,10 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
 import { RemindersModule } from './modules/reminders/reminders.module';
 import { FamilyModule } from './modules/family/family.module';
 import { SafetyModule } from './modules/safety/safety.module';
+import { HealthModule } from './modules/health/health.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PersonalizationModule } from './modules/personalization/personalization.module';
+import { VoiceModule } from './modules/voice/voice.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -29,6 +33,10 @@ import configuration from './config/configuration';
     RemindersModule,
     FamilyModule,
     SafetyModule,
+    HealthModule,
+    NotificationsModule,
+    PersonalizationModule,
+    VoiceModule,
   ],
   controllers: [],
   providers: [],

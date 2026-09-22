@@ -45,19 +45,39 @@ model User {
 }
 
 model ElderProfile {
-  id           String   @id @default(uuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dateOfBirth  DateTime?
-  ageGroup     String?
-  interests    String[]
-  cognitiveLvl Int      @default(3)  // 1–5, drives base difficulty
-  culturalTags String[]
-  voiceTone    String?  @default("warm_compassionate")
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth      DateTime?
+  ageGroup         String?
+  interests        String[]
+  cognitiveLvl     Int       @default(3)  // 1–5, drives base difficulty
+  culturalTags     String[]
+  voiceTone        String?   @default("warm_compassionate")
   emergencyContact String?
-  medicalNotes String?
+  medicalNotes     String?
 
   @@map("elder_profiles")
+}
+
+model ElderLinkCode {
+  id        String   @id @default(uuid())
+  elderId   String   @map("elder_id")
+  code      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime? @map("expires_at")
+
+  @@map("elder_link_codes")
+}
+
+model CaregiverElderLink {
+  id          String   @id @default(uuid())
+  caregiverId String   @map("caregiver_id")
+  elderId     String   @map("elder_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([caregiverId, elderId])
+  @@map("caregiver_elder_links")
 }
 
 // ─── Family ──────────────────────────────────────────────────────────────────
@@ -87,21 +107,35 @@ model ConsentRecord {
   @@map("consent_records")
 }
 
+model FamilyContact {
+  id                 String   @id @default(uuid())
+  elderId            String   @map("elder_id")
+  name               String
+  relationship       String
+  phone              String
+  avatarEmoji        String?  @map("avatar_emoji")
+  photoUrl           String?  @map("photo_url")
+  isEmergencyContact Boolean  @default(false) @map("is_emergency_contact")
+  notes              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@map("family_contacts")
+}
+
 // ─── Memory ──────────────────────────────────────────────────────────────────
 
 model Memory {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String   // "fact" | "anecdote" | "photo" | "routine"
-  title     String?
-  content   String
-  tags      String[]
-  imageUrl  String?
-  addedBy   String   @default("ELDER") // ELDER | CAREGIVER | SYSTEM
-  // embedding stored externally in vector DB; reference ID kept here
-  embeddingRef String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  userId       String   @map("elder_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String   // "fact" | "anecdote" | "photo" | "routine"
+  title        String?
+  content      String
+  tags         String[]
+  imageUrl     String?  @map("image_url")
+  addedBy      String   @default("ELDER") @map("added_by") // ELDER | CAREGIVER | SYSTEM
+  embeddingRef String?  @map("embedding_ref")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("memories")
 }
@@ -118,13 +152,13 @@ model Game {
 
 model GameSession {
   id         String    @id @default(uuid())
-  userId     String
+  userId     String    @map("user_id")
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gameKey    String
+  gameKey    String    @map("game_key")
   difficulty Int       @default(3)
   score      Int       @default(0)
-  startedAt  DateTime  @default(now())
-  endedAt    DateTime?
+  startedAt  DateTime  @default(now()) @map("started_at")
+  endedAt    DateTime? @map("ended_at")
   attempts   Attempt[]
 
   @@map("game_sessions")
@@ -132,25 +166,37 @@ model GameSession {
 
 model Attempt {
   id         String      @id @default(uuid())
-  sessionId  String
-  session    GameSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  itemIndex  Int
+  sessionId  String      @map("session_id")
+  session    GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  itemIndex  Int         @map("item_index")
   correct    Boolean
-  latencyMs  Int
-  errorType  String?
-  createdAt  DateTime    @default(now())
+  latencyMs  Int         @map("latency_ms")
+  errorType  String?     @map("error_type")
+  createdAt  DateTime    @default(now()) @map("created_at")
 
   @@map("attempts")
+}
+
+model GameVideo {
+  id              String   @id @default(uuid())
+  gameKey         String   @map("game_key")
+  title           String
+  titleTa         String?  @map("title_ta")
+  youtubeId       String   @map("youtube_id")
+  durationSeconds Int      @default(0) @map("duration_seconds")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("game_videos")
 }
 
 // ─── Conversations ───────────────────────────────────────────────────────────
 
 model Conversation {
   id        String    @id @default(uuid())
-  userId    String
+  userId    String    @map("user_id")
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   summary   String?
-  createdAt DateTime  @default(now())
+  createdAt DateTime  @default(now()) @map("created_at")
   messages  Message[]
 
   @@map("conversations")
@@ -158,14 +204,14 @@ model Conversation {
 
 model Message {
   id             String       @id @default(uuid())
-  conversationId String
+  conversationId String       @map("conversation_id")
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         String       // "user" | "assistant"
   text           String
-  audioUrl       String?
+  audioUrl       String?      @map("audio_url")
   emotion        String?      // "happy" | "sad" | "confused" | "distressed" | "calm"
-  distressFlag   Boolean      @default(false)
-  createdAt      DateTime     @default(now())
+  distressFlag   Boolean      @default(false) @map("distress_flag")
+  createdAt      DateTime     @default(now()) @map("created_at")
 
   @@map("messages")
 }
@@ -174,31 +220,80 @@ model Message {
 
 model Reminder {
   id              String    @id @default(uuid())
-  userId          String
+  userId          String    @map("elder_id")
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type            String    // "medication" | "hydration" | "activity"
   title           String
   description     String?
-  scheduleCron    String    // cron expression
-  isActive        Boolean   @default(true)
-  lastConfirmedAt DateTime?
-  createdAt       DateTime  @default(now())
+  timeOfDay       String?   @map("time_of_day")
+  scheduleCron    String?   @map("schedule_cron")
+  isActive        Boolean   @default(true) @map("is_active")
+  confirmed       Boolean   @default(false)
+  lastConfirmedAt DateTime? @map("last_confirmed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
   @@map("reminders")
 }
 
-// ─── Safety ──────────────────────────────────────────────────────────────────
+// ─── Medical Reports & Health ────────────────────────────────────────────────
+
+model MedicalReport {
+  id         String   @id @default(uuid())
+  elderId    String   @map("elder_id")
+  title      String
+  doctorName String   @map("doctor_name")
+  reportDate String   @map("report_date")
+  category   String   // "Prescription" | "Lab Test" | "Doctor Visit" | "Scan" | "Vitals" | "Other"
+  fileUrl    String?  @map("file_url")
+  summary    String?
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("medical_reports")
+}
+
+model CareNote {
+  id               String   @id @default(uuid())
+  elderId          String   @map("elder_id")
+  title            String
+  conditionDetails String   @map("condition_details")
+  careInstructions String   @map("care_instructions")
+  aiGuidance       String?  @map("ai_guidance")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("care_notes")
+}
+
+// ─── Caretaker Notifications & Safety ────────────────────────────────────────
+
+model CaretakerNotification {
+  id                String   @id @default(uuid())
+  elderId           String   @map("elder_id")
+  elderName         String   @map("elder_name")
+  type              String   // "HEALTH_ALERT" | "MISSED_MEDICATION" | "MEMORY_SHARED" | "DISTRESS" | "GENERAL"
+  severity          String   @default("INFO") // "INFO" | "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+  title             String
+  message           String
+  transcriptExcerpt String?  @map("transcript_excerpt")
+  recommendation    String?
+  emailSent         Boolean  @default(false) @map("email_sent")
+  recipientEmail    String?  @map("recipient_email")
+  isRead            Boolean  @default(false) @map("is_read")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("caretaker_notifications")
+}
 
 model SafetyIncident {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  triggerText String
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  triggerText String    @map("trigger_text")
   emotion     String?
-  severity    String   @default("low") // "low" | "medium" | "high" | "critical"
-  alertsSent  Boolean  @default(false)
-  resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
+  severity    String    @default("low") // "low" | "medium" | "high" | "critical"
+  alertsSent  Boolean   @default(false) @map("alerts_sent")
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("safety_incidents")
 }
