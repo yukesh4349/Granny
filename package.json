@@ -13,7 +13,8 @@
     "dev:mobile": "npm run start --workspace=@elderly-ai/mobile",
     "dev:backend": "npm run start:dev --workspace=backend",
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test:suites",
+    "test:suites": "npx tsx tests/e2e-integration.test.ts && npx tsx tests/sync-contract.test.ts && npx tsx tests/system-smoke.test.ts"
   },
   "overrides": {
     "react-native": "0.74.5",
