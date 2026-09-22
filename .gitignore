@@ -51,3 +51,15 @@ web-build/
 # Prisma
 /database/prisma/migrations/*
 !/database/prisma/migrations/.gitkeep
+
+# Large Media & Video Binaries (Code-Only Repository)
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.flv
+/public/videos/
+/apps/web/public/videos/
+/apps/mobile/assets/videos/
+
